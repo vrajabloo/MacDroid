@@ -1,48 +1,112 @@
-# MVP Limitations
+# Limitations
 
-CleanDroid Gaming is intentionally designed as a wrapper around the official Google Android Emulator.
+CleanDroid Gaming is intentionally designed as a wrapper around the official Google Android Emulator. This keeps the project practical, maintainable, and aligned with Google's supported Android tooling.
 
-## Not included
+## What CleanDroid Is Not
 
-- No custom Android emulator engine
-- No custom hypervisor or Android runtime
-- No bundled Android system images
-- No Play Store redistribution
-- No guaranteed FPS control for every emulator version
-- No direct keyboard/mouse injection in the MVP
-- No binary patching of Google's own Emulator toolbar
+CleanDroid is not:
 
-## Key mapping status
+- a custom Android emulator engine
+- a custom hypervisor
+- a custom Android runtime
+- a replacement for Google's system images
+- a Play Store distributor
+- a modified Google Emulator binary
 
-The app includes:
+The app launches and controls the official emulator. All Android execution comes from Google's tooling.
 
-- Codable key mapping profiles
-- Per-game mapping storage
-- Normalized tap positions
-- A visual editor UI
-- Automatic profile lookup when a game launches
-- Manual test taps through `adb shell input tap`
-- Future input bridge and gamepad-ready fields in each saved profile
+## System Images
 
-Live input injection is future work. Good implementation options include:
+CleanDroid does not bundle Android system images. Users need Android SDK system images installed through Android Studio or `sdkmanager`.
 
-- `adb shell input tap x y` for simple tap actions
-- `adb shell input keyevent` for Android key events
-- A transparent macOS overlay that translates keyboard and mouse events
-- Gamepad event bridging where supported
+For Play Store support, use a Google Play ARM64 image:
 
-The profile model is intentionally clean so any of those approaches can be added behind a future input service.
+```text
+system-images;android-35;google_apis_playstore;arm64-v8a
+```
 
-## Official Emulator toolbar
+If the selected AVD uses a plain Google APIs or AOSP image, Play Store will not be available.
 
-CleanDroid does not patch Google's Emulator binary. The official toolbar stays visible by default. To handle emulator builds where toolbar clicks are unreliable, CleanDroid places transparent helper panels over the common toolbar buttons and sends the matching ADB command.
+## Play Store
 
-This keeps the familiar Google toolbar UI while avoiding dependence on the toolbar's native Qt click handling.
+CleanDroid can launch Play Store and reset Play Store state, but it cannot:
 
-## Play Store support
+- redistribute Play Store
+- bypass Google account requirements
+- bypass regional restrictions
+- bypass Google Play download throttling
+- guarantee download speed
 
-Play Store support requires a Google Play system image. If the selected AVD uses a plain Google APIs image or an AOSP image, the app will warn the user instead of pretending Play Store is available.
+Slow Play Store downloads can be caused by:
+
+- Google Play throttling
+- VPN or proxy configuration
+- DNS filters
+- ISP congestion
+- macOS network responsiveness
+- first-run Google Play Services updates
 
 ## Network Boost
 
-Network Boost uses the official Emulator `-dns-server` launch flag. It can help with slow DNS or regional resolver problems, but it cannot bypass Google Play throttling, ISP congestion, VPN issues, or Play Store account-side limits.
+Network Boost uses the official Emulator `-dns-server` launch flag. It can help when DNS resolution is slow or unreliable.
+
+It cannot fix:
+
+- a slow internet connection
+- Play Store server-side throttling
+- VPN congestion
+- firewall rules outside the emulator
+- Google account or region restrictions
+
+## FPS Control
+
+CleanDroid stores FPS preferences and uses performance-oriented emulator settings. Exact FPS behavior still depends on:
+
+- Android Emulator version
+- system image
+- host GPU
+- game engine
+- Android display pipeline
+- game settings
+
+The app does not promise guaranteed FPS across all games.
+
+## Key Mapping
+
+The current key mapping implementation is an MVP:
+
+- profiles are saved per game
+- normalized tap coordinates are stored
+- manual ADB tap tests work
+- input bridge and gamepad fields are prepared
+
+Live real-time keyboard/mouse/gamepad injection is future work.
+
+Possible future approaches:
+
+- `adb shell input tap x y`
+- `adb shell input keyevent`
+- transparent macOS overlay
+- native gamepad event bridge
+- per-game input service
+
+## Official Emulator Toolbar
+
+CleanDroid does not patch Google's Emulator binary. The official toolbar stays visible by default.
+
+If Google's toolbar ignores clicks on a specific macOS setup, CleanDroid places transparent helper panels over common toolbar buttons and sends the matching ADB command.
+
+This repairs common actions while keeping the familiar Google toolbar UI.
+
+## Multi-Instance
+
+The current version focuses on one selected AVD at a time. Multi-instance management is planned.
+
+## Distribution
+
+The local packaging script creates an ad-hoc signed macOS app bundle. Public distribution would need:
+
+- Developer ID signing
+- notarization
+- hardened runtime review
+- release build workflow

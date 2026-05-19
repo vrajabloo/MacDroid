@@ -1,113 +1,298 @@
-# CleanDroid Gaming
+# CleanDroid Gaming Documentation
 
-CleanDroid Gaming is a native SwiftUI macOS app for Apple Silicon Macs. It is a premium, gaming-focused launcher and manager for Android games using the official Google Android Emulator, Android SDK, ADB, and AVD tooling in the background.
+CleanDroid Gaming is a native SwiftUI macOS app for Apple Silicon Macs. It provides a premium gaming launcher and manager around the official Google Android Emulator, Android SDK, ADB, and AVD tools.
 
-It is not a custom emulator engine. The app provides a commercial-emulator-style control center around Google's emulator tools.
+It does not emulate Android by itself. The Android runtime, virtualization, system images, Play Store support, and device behavior all come from Google's official emulator stack.
 
-## What the MVP includes
+## Design Goal
 
-- Dark graphite SwiftUI interface with neon Android accent styling
-- macOS sidebar navigation
-- Home dashboard with a large Play action
-- Android SDK, ADB, emulator, SDK Manager, and AVD Manager detection
-- Existing AVD detection
-- Recommended `CleanDroid_Gaming` AVD creation using an ARM64 Google Play system image when available
-- Start and stop emulator actions
-- Installed app discovery through `adb shell pm list packages -3`
-- App launch through `adb shell monkey`
-- App uninstall through `adb uninstall`
-- Favorite, recent, and installed filters in the game library
-- Android app-info launch from each game card
-- APK drag-and-drop installation through `adb install -r`
-- Manual Android SDK path selection
-- Android SDK license acceptance from the Settings screen
-- Emulator boot waiting and readiness checks
-- Connected emulator details such as model, Android version, API level, ABI, and serial
-- Android Back, Home, and Recents buttons through targeted numeric `adb shell input keyevent`
-- Home uses Android's launcher intent fallback first for more reliable behavior
-- Official Google Emulator toolbar remains visible by default
-- Transparent repair panels over the official toolbar for power, volume, rotate, screenshot, Back, Home, and Recents
-- Manual CleanDroid controls window remains available from the Home dashboard
-- Emulator serial preference when multiple ADB devices are connected
-- Screenshot capture through `adb shell screencap`
-- Recent logcat collection through `adb logcat`
-- Clickable emulator icon in the sidebar and home dashboard
-- Optional auto-start when the macOS app opens
-- Optional auto-launch of the last played game after boot
-- Boost & Repair screen for ADB restart, Android reboot, Play Store reset, and emulator network diagnostics
-- Network Boost launch flag using `-dns-server`
-- Balanced, Performance, Battery Saver, and Custom performance profiles
-- Basic RAM, CPU, resolution, DPI, FPS, fullscreen, toolbar, and mode settings
-- Key mapping profile UI and Codable data model with future input bridge and gamepad fields
-- Manual test taps for saved key mappings through `adb shell input tap`
-- Logs and troubleshooting screen with beginner-friendly command explanations
+The goal is to make the official Android Emulator feel like a beginner-friendly gaming product:
 
-## Running the project
+- one clear app icon
+- one dashboard
+- one library
+- one APK installer
+- one repair area
+- simple settings
+- readable logs
 
-1. Open the `CleanDroidGaming` folder in Xcode.
-2. Select the `CleanDroidGaming` executable scheme.
-3. Run the app on macOS.
+Users should not need to remember Terminal commands for common tasks.
 
-You can also verify compilation from Terminal:
+## Screens
+
+### Home
+
+The Home dashboard is the launch center:
+
+- large Start/Play action
+- Stop button
+- SDK and device status
+- installed app count
+- ADB status
+- Play Store support status
+- recent games
+- selected AVD
+- APK drop zone
+- screenshot and logcat shortcuts
+
+### Library
+
+The Library screen reads installed user apps from Android through ADB. It keeps local metadata such as favorites and last-played timestamps.
+
+Library tools:
+
+- search
+- installed filter
+- recent filter
+- favorites filter
+- launch game
+- uninstall game
+- open Android App Info
+- create key mapping profile
+
+### APK Installer
+
+The APK Installer accepts files by drag and drop or browse flow. It installs APKs through:
 
 ```bash
-cd CleanDroidGaming
+adb install -r <apk>
+```
+
+After installation, the app refreshes the library.
+
+### Boost
+
+The Boost screen provides quick repair actions:
+
+- Restart ADB
+- Reboot Android
+- Clear Play Store State
+- Open Play Store
+- Rescan environment
+- Run ping diagnostics
+- Enable direct DNS launch mode
+
+Network Boost uses:
+
+```bash
+emulator -dns-server <servers>
+```
+
+### Key Mapping
+
+The Key Mapping screen stores per-game input profiles. The current MVP supports saved mappings and manual tap tests. It prepares the model for:
+
+- live keyboard overlay
+- mouse mapping
+- gamepad event bridging
+- per-game profiles
+
+### Settings
+
+Settings include:
+
+- Android SDK path
+- SDK auto-detection
+- SDK license acceptance
+- performance profile
+- RAM preset
+- CPU preset
+- resolution preset
+- DPI preset
+- FPS target
+- direct DNS mode
+- emulator toolbar visibility
+- toolbar repair
+- auto-start
+- auto-launch last game
+- fullscreen preference
+
+### Logs
+
+Logs show user-friendly explanations and the command behind each SDK operation. This is intentionally educational, so beginner developers can understand what the wrapper is doing.
+
+## Command Strategy
+
+CleanDroid runs official Android tools through `Process`.
+
+Examples:
+
+```bash
+adb devices
+adb wait-for-device
+adb shell getprop sys.boot_completed
+adb shell pm list packages -3 -f
+adb shell monkey -p <package> -c android.intent.category.LAUNCHER 1
+adb uninstall <package>
+adb install -r <apk>
+adb shell screencap -p /sdcard/<file>
+adb logcat -d -t 200
+emulator -avd <name> -netdelay none -netspeed full -gpu host
+avdmanager list avd
+sdkmanager --install <system-image>
+```
+
+Every service logs what it is about to do before running a command.
+
+## Main Services
+
+### AndroidSDKDetector
+
+Finds the Android SDK and required tools. It checks common locations and environment variables.
+
+### ADBService
+
+Wraps ADB behavior:
+
+- connected devices
+- boot completion
+- installed app listing
+- app launch
+- app uninstall
+- Play Store launch
+- screenshot capture
+- logcat collection
+- navigation key events
+- rotation
+- ADB restart
+- Android reboot
+- Play Store reset
+- ping diagnostics
+- Android App Info launch
+
+### EmulatorService
+
+Starts and stops the official Google Android Emulator. It does not implement emulator internals.
+
+Launch options include:
+
+- no artificial network delay
+- full network speed
+- host GPU rendering
+- no snapshot save
+- optional DNS override
+- optional skin/no-skin behavior
+
+### AVDManagerService
+
+Lists and creates AVDs. It also writes selected performance settings into the AVD config file.
+
+### APKInstallerService
+
+Installs APK files with ADB.
+
+### GameLibraryService
+
+Merges live app discovery with local cached metadata:
+
+- friendly name
+- icon placeholder
+- last played
+- favorite state
+- version
+- source directory
+
+### KeyMappingService
+
+Persists saved key mapping profiles.
+
+### InputMappingExecutionService
+
+Sends manual ADB tap tests from saved normalized tap coordinates.
+
+### OfficialEmulatorToolbarRepairService
+
+Keeps the official Google Emulator toolbar visible, but repairs common button clicks with transparent macOS helper panels that route actions through CleanDroid's ADB control layer.
+
+### LogService
+
+Stores visible log entries for the Logs screen.
+
+### SettingsService
+
+Saves `GamingSettings` as local JSON.
+
+## Stored Data
+
+CleanDroid stores local app data in:
+
+```text
+~/Library/Application Support/CleanDroid Gaming/
+```
+
+Files include:
+
+- `settings.json`
+- `game-library.json`
+- `key-mappings.json`
+- `Screenshots/`
+
+## Recommended Development Flow
+
+1. Build:
+
+```bash
 swift build
 ```
 
-To create a clickable macOS app bundle:
+2. Package:
 
 ```bash
 ./Packaging/build-app.sh
 ```
 
-Open `Build/CleanDroid Gaming.app` from Finder. Auto-start is enabled by default, so opening the app starts the selected emulator after SDK detection.
+3. Open:
 
-## Android SDK expectations
+```text
+Build/CleanDroid Gaming.app
+```
 
-CleanDroid Gaming looks for tools in common locations:
+4. Use Logs to verify commands.
 
-- `$ANDROID_HOME`
-- `$ANDROID_SDK_ROOT`
-- `~/Library/Android/sdk`
-- Tools available on `PATH`
+5. Use Boost when ADB, Play Store, or networking becomes unreliable.
 
-Required tools:
+## Troubleshooting
 
-- `adb`
-- `emulator`
-- `avdmanager`
-- `sdkmanager`
+### Emulator starts but ADB is offline
 
-For Play Store support, use an ARM64 Google Play system image, for example:
+Use:
+
+- Boost > Restart ADB
+- Boost > Reboot Android
+- Home > Scan Again
+
+### Play Store downloads are slow
+
+Try:
+
+- Boost > Network Boost
+- Boost > Clear Play Store State
+- restart emulator
+- disable VPN, proxy, ad blockers, or DNS filters on macOS
+
+### Toolbar buttons do not work
+
+Keep:
+
+- Settings > Keep official Google Emulator toolbar visible
+- Settings > Repair official toolbar buttons
+
+CleanDroid's transparent repair layer should route Back, Home, Recents, and other common buttons through ADB.
+
+### No Play Store
+
+Install/select a Google Play ARM64 system image:
 
 ```text
 system-images;android-35;google_apis_playstore;arm64-v8a
 ```
 
-## Architecture
+### APK install fails
 
-The project uses a simple MVVM-friendly shape:
+Check:
 
-- `App/` contains the SwiftUI app entry point.
-- `Views/` contains SwiftUI screens and reusable view components.
-- `ViewModels/` contains presentation state and view helpers.
-- `Models/` contains Codable app, emulator, settings, log, and key mapping models.
-- `Services/` wraps Android SDK commands and local persistence.
-- `Managers/` contains `AppEnvironment`, the app-wide coordinator.
-- `Utilities/` contains shell, JSON, path, and design helpers.
-- `Documentation/` explains limitations and future features.
-
-## Main services
-
-- `AndroidSDKDetector`: finds Android SDK tools.
-- `ADBService`: lists, launches, repairs, diagnoses, and uninstalls Android apps.
-- `InputMappingExecutionService`: sends manual test taps for saved control mappings.
-- `EmulatorService`: starts and stops the official emulator.
-- `AVDManagerService`: lists and creates Android Virtual Devices, and writes no-frame gaming display settings.
-- `OfficialEmulatorToolbarRepairService`: keeps Google's toolbar visible while routing its common buttons through ADB.
-- `APKInstallerService`: installs APK files through ADB.
-- `GameLibraryService`: merges live ADB data with saved local metadata.
-- `KeyMappingService`: saves per-game control profiles.
-- `LogService`: stores visible troubleshooting messages.
-- `SettingsService`: saves gaming settings as JSON.
+- emulator is running
+- ADB is online
+- APK is valid
+- Android storage is available
+- Logs screen for the raw ADB error
