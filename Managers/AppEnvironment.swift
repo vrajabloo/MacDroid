@@ -1,0 +1,770 @@
+//
+// AppEnvironment.swift
+// CleanDroid Gaming
+//
+// The central coordinator for the app. It owns services, exposes app-wide state,
+// and gives SwiftUI views simple async actions such as Start Emulator or Install APK.
+
+import Foundation
+
+@MainActor
+final class AppEnvironment: ObservableObject {
+    @Published var sdkInfo: AndroidSDKInfo = .empty
+    @Published var emulatorState: EmulatorState = .unknown
+    @Published var deviceInfo: AndroidDeviceInfo = .empty
+    @Published var avds: [AVDDevice] = []
+    @Published var selectedAVDName: String
+    @Published var games: [AndroidApp] = []
+    @Published var keyProfiles: [KeyMappingProfile] = []
+    @Published var settings: GamingSettings
+    @Published var isBusy = false
+    @Published var installProgress: Double?
+    @Published var latestScreenshotURL: URL?
+    @Published var recentLogcatText = ""
+    @Published var networkDiagnosticText = ""
+    @Published var lastNavigationMessage = ""
+    @Published var lastEmulatorControlMessage = ""
+    @Published var statusMessage = "Ready"
+
+    let logService: LogService
+    let sdkDetector: AndroidSDKDetector
+    let adbService: ADBService
+    let emulatorService: EmulatorService
+    let avdManagerService: AVDManagerService
+    let apkInstallerService: APKInstallerService
+    let gameLibraryService: GameLibraryService
+    let keyMappingService: KeyMappingService
+    let inputMappingExecutionService: InputMappingExecutionService
+    let settingsService: SettingsService
+    let officialToolbarRepairService: OfficialEmulatorToolbarRepairService
+
+    private var hasBootstrapped = false
+    private var hasHandledIconLaunch = false
+    private var emulatorRotation = 0
+
+    init() {
+        let logService = LogService()
+        let settingsService = SettingsService(logService: logService)
+        let gameLibraryService = GameLibraryService(logService: logService)
+        let keyMappingService = KeyMappingService(logService: logService)
+        let avdManagerService = AVDManagerService(logService: logService)
+
+        self.logService = logService
+        self.settingsService = settingsService
+        self.gameLibraryService = gameLibraryService
+        self.keyMappingService = keyMappingService
+        self.avdManagerService = avdManagerService
+        self.sdkDetector = AndroidSDKDetector(logService: logService)
+        self.adbService = ADBService(logService: logService)
+        self.emulatorService = EmulatorService(logService: logService)
+        self.apkInstallerService = APKInstallerService(logService: logService)
+        self.inputMappingExecutionService = InputMappingExecutionService(logService: logService)
+        self.officialToolbarRepairService = OfficialEmulatorToolbarRepairService(logService: logService)
+        self.settings = settingsService.loadSettings()
+        self.games = gameLibraryService.loadCachedLibrary()
+        self.keyProfiles = keyMappingService.loadProfiles()
+        self.selectedAVDName = avdManagerService.recommendedAVDName
+
+        logService.log("CleanDroid Gaming opened. This app wraps the official Google Android Emulator.", level: .info)
+    }
+
+    func bootstrap() async {
+        guard !hasBootstrapped else {
+            return
+        }
+
+        hasBootstrapped = true
+        await refreshAll()
+        await startFromAppIconIfNeeded()
+    }
+
+    func refreshAll() async {
+        await runBusyTask("Refreshing Android environment...") {
+            await refreshSDK()
+            await refreshAVDs()
+            await refreshEmulatorState()
+
+            if emulatorState == .running {
+                await refreshGames()
+            }
+        }
+    }
+
+    func refreshSDK() async {
+        let customPath = settings.customSDKRootPath?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let customRoot = customPath?.isEmpty == false ? URL(fileURLWithPath: customPath!) : nil
+        sdkInfo = await sdkDetector.detect(preferredRoot: customRoot)
+    }
+
+    func refreshAVDs() async {
+        guard let avdManagerURL = sdkInfo.avdManagerURL else {
+            avds = []
+            return
+        }
+
+        do {
+            avds = try await avdManagerService.listAVDs(avdManagerURL: avdManagerURL)
+
+            if avds.contains(where: { $0.name == avdManagerService.recommendedAVDName }) {
+                selectedAVDName = avdManagerService.recommendedAVDName
+            } else if selectedAVDName.isEmpty, let firstAVD = avds.first {
+                selectedAVDName = firstAVD.name
+            }
+        } catch {
+            logService.log("Could not list AVDs: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    func createRecommendedAVD() async {
+        await runBusyTask("Creating gaming AVD...") {
+            do {
+                try await avdManagerService.createRecommendedAVD(info: sdkInfo)
+                avdManagerService.apply(settings: settings, toAVDNamed: avdManagerService.recommendedAVDName)
+                await refreshAVDs()
+            } catch {
+                logService.log("Could not create the recommended AVD: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func startEmulator() async {
+        guard let emulatorURL = sdkInfo.emulatorURL else {
+            logService.log("Cannot start the emulator because the emulator binary was not found.", level: .error)
+            return
+        }
+
+        let avdName = selectedAVDName.isEmpty ? avdManagerService.recommendedAVDName : selectedAVDName
+
+        await runBusyTask("Starting emulator...") {
+            do {
+                avdManagerService.apply(settings: settings, toAVDNamed: avdName)
+                emulatorState = .booting
+                try emulatorService.startEmulator(
+                    emulatorURL: emulatorURL,
+                    avdName: avdName,
+                    settings: settings
+                )
+                updateOfficialToolbarRepair()
+                await waitForEmulatorBoot()
+            } catch {
+                emulatorState = .error
+                logService.log("Emulator could not start: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func launchFromEmulatorIcon() async {
+        logService.log("Emulator icon clicked. CleanDroid will open the gaming emulator experience.", level: .info)
+
+        switch emulatorState {
+        case .running:
+            await refreshGames()
+        case .booting:
+            await refreshEmulatorState()
+        case .stopped, .unknown, .error:
+            await ensureRecommendedAVDIfNeeded()
+            let avdName = selectedAVDName.isEmpty ? avdManagerService.recommendedAVDName : selectedAVDName
+            guard avdExists(named: avdName) else {
+                logService.log("CleanDroid could not find a launchable AVD yet. Create the gaming AVD from Home or Settings, then click the emulator icon again.", level: .warning)
+                return
+            }
+            await startEmulator()
+        }
+    }
+
+    func stopEmulator() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot stop the emulator because ADB was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Stopping emulator...") {
+            do {
+                let targetSerial = await adbService.preferredEmulatorSerial(
+                    adbURL: adbURL,
+                    preferredSerial: deviceInfo.serial
+                )
+                try await emulatorService.stopEmulator(adbURL: adbURL, serial: targetSerial)
+                emulatorState = .stopped
+                officialToolbarRepairService.stop()
+            } catch {
+                emulatorState = .error
+                logService.log("Emulator stop failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func restartEmulator() async {
+        await stopEmulator()
+        await startEmulator()
+    }
+
+    func refreshEmulatorState() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            emulatorState = .unknown
+            deviceInfo = .empty
+            return
+        }
+
+        emulatorState = await emulatorService.state(adbURL: adbURL, adbService: adbService)
+
+        if emulatorState == .running || emulatorState == .booting {
+            deviceInfo = await adbService.deviceInfo(adbURL: adbURL)
+            updateOfficialToolbarRepair()
+        } else {
+            deviceInfo = .empty
+            officialToolbarRepairService.stop()
+        }
+    }
+
+    func refreshGames() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot refresh games because ADB was not found.", level: .warning)
+            return
+        }
+
+        do {
+            let discovered = try await adbService.listInstalledUserApps(adbURL: adbURL, serial: deviceInfo.serial)
+            games = gameLibraryService.merge(discoveredApps: discovered, cachedApps: games)
+            statusMessage = "\(games.count) installed app\(games.count == 1 ? "" : "s") found"
+        } catch {
+            logService.log("Could not refresh installed games: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    func installAPK(from apkURL: URL) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot install APK because ADB was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Installing APK...") {
+            do {
+                let targetSerial = await adbService.preferredEmulatorSerial(
+                    adbURL: adbURL,
+                    preferredSerial: deviceInfo.serial
+                )
+                installProgress = 0.15
+                let didInstall = try await apkInstallerService.install(
+                    apkURL: apkURL,
+                    adbURL: adbURL,
+                    serial: targetSerial
+                )
+                installProgress = didInstall ? 1.0 : nil
+
+                if didInstall {
+                    await refreshGames()
+                }
+            } catch {
+                logService.log("APK install failed: \(error.localizedDescription)", level: .error)
+            }
+
+            installProgress = nil
+        }
+    }
+
+    func launch(_ app: AndroidApp) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot launch \(app.name) because ADB was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Launching \(app.name)...") {
+            do {
+                if keyProfiles.contains(where: { $0.packageName == app.packageName }) {
+                    logService.log("Loaded saved key mapping profile for \(app.name). Direct input injection is planned for a future build.", level: .info)
+                }
+
+                try await adbService.launch(
+                    packageName: app.packageName,
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+                games = gameLibraryService.markPlayed(app, in: games)
+            } catch {
+                logService.log("Could not launch \(app.name): \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func toggleFavorite(_ app: AndroidApp) {
+        games = gameLibraryService.toggleFavorite(app, in: games)
+        logService.log(
+            app.isFavorite ? "\(app.name) removed from favorites." : "\(app.name) added to favorites.",
+            level: .info
+        )
+    }
+
+    func openAppInfo(_ app: AndroidApp) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot open Android app info because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running else {
+            logService.log("Start the emulator before opening app info.", level: .warning)
+            return
+        }
+
+        do {
+            try await adbService.openAppInfo(
+                packageName: app.packageName,
+                adbURL: adbURL,
+                serial: deviceInfo.serial
+            )
+        } catch {
+            logService.log("Could not open app info for \(app.name): \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    func uninstall(_ app: AndroidApp) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot uninstall \(app.name) because ADB was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Uninstalling \(app.name)...") {
+            do {
+                try await adbService.uninstall(
+                    packageName: app.packageName,
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+                await refreshGames()
+            } catch {
+                logService.log("Could not uninstall \(app.name): \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func openPlayStore() async {
+        guard sdkInfo.playStoreImageAvailable else {
+            logService.log("Play Store needs a Google Play system image. Create or select a Google Play ARM64 AVD first.", level: .warning)
+            return
+        }
+
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot open Play Store because ADB was not found.", level: .error)
+            return
+        }
+
+        do {
+            try await adbService.openPlayStore(adbURL: adbURL, serial: deviceInfo.serial)
+        } catch {
+            logService.log("Could not open Play Store: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    func acceptSDKLicenses() async {
+        guard let sdkManagerURL = sdkInfo.sdkManagerURL else {
+            logService.log("Cannot accept licenses because SDK Manager was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Accepting SDK licenses...") {
+            do {
+                try await avdManagerService.acceptLicenses(sdkManagerURL: sdkManagerURL)
+            } catch {
+                logService.log("SDK license command failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func captureScreenshot() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot capture a screenshot because ADB was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Capturing screenshot...") {
+            do {
+                latestScreenshotURL = try await adbService.captureScreenshot(
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+            } catch {
+                logService.log("Screenshot capture failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func loadRecentLogcat() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot read logcat because ADB was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Loading logcat...") {
+            do {
+                recentLogcatText = try await adbService.recentLogcat(
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+            } catch {
+                logService.log("Logcat failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func restartADBServer() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot restart ADB because adb was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Restarting ADB...") {
+            do {
+                try await adbService.restartServer(adbURL: adbURL)
+                await refreshAll()
+            } catch {
+                logService.log("ADB restart failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func rebootAndroid() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot reboot Android because adb was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Rebooting Android...") {
+            do {
+                try await adbService.rebootDevice(adbURL: adbURL, serial: deviceInfo.serial)
+                emulatorState = .booting
+                await waitForEmulatorBoot()
+            } catch {
+                logService.log("Android reboot failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func clearPlayStoreData() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot clear Play Store because adb was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running else {
+            logService.log("Start the emulator before clearing Play Store data.", level: .warning)
+            return
+        }
+
+        await runBusyTask("Clearing Play Store...") {
+            do {
+                try await adbService.clearPlayStoreData(adbURL: adbURL, serial: deviceInfo.serial)
+            } catch {
+                logService.log("Play Store reset failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
+    func runNetworkDiagnostics() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot test emulator network because adb was not found.", level: .error)
+            return
+        }
+
+        await runBusyTask("Testing emulator network...") {
+            var output: [String] = []
+
+            for host in ["8.8.8.8", "play.googleapis.com"] {
+                do {
+                    let result = try await adbService.ping(
+                        host: host,
+                        adbURL: adbURL,
+                        serial: deviceInfo.serial
+                    )
+                    output.append("== \(host) ==\n\(result)")
+                } catch {
+                    output.append("== \(host) ==\n\(error.localizedDescription)")
+                }
+            }
+
+            networkDiagnosticText = output.joined(separator: "\n\n")
+        }
+    }
+
+    func sendAndroidNavigation(_ key: AndroidNavigationKey) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot send Android \(key.title) because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running || emulatorState == .booting else {
+            logService.log("Start the emulator before using Android navigation buttons.", level: .warning)
+            return
+        }
+
+        do {
+            let target = try await adbService.sendNavigationKey(
+                key,
+                adbURL: adbURL,
+                serial: deviceInfo.serial
+            )
+            lastNavigationMessage = "\(key.title) sent to \(target)"
+        } catch {
+            lastNavigationMessage = "\(key.title) failed"
+            logService.log("Android \(key.title) failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    func sendEmulatorControl(_ action: EmulatorControlAction) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            lastEmulatorControlMessage = "ADB not found"
+            logService.log("Cannot send \(action.title) because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running || emulatorState == .booting else {
+            lastEmulatorControlMessage = "Emulator is not running"
+            logService.log("Start the emulator before using \(action.title).", level: .warning)
+            return
+        }
+
+        do {
+            switch action {
+            case .screenshot:
+                await captureScreenshot()
+                lastEmulatorControlMessage = latestScreenshotURL == nil ? "Screenshot failed" : "Screenshot saved"
+            case .rotateLeft:
+                emulatorRotation = (emulatorRotation + 3) % 4
+                let target = try await adbService.setRotation(
+                    emulatorRotation,
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+                lastEmulatorControlMessage = "Rotate sent to \(target)"
+            case .rotateRight:
+                emulatorRotation = (emulatorRotation + 1) % 4
+                let target = try await adbService.setRotation(
+                    emulatorRotation,
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+                lastEmulatorControlMessage = "Rotate sent to \(target)"
+            case .back:
+                await sendAndroidNavigation(.back)
+                lastEmulatorControlMessage = lastNavigationMessage
+            case .home:
+                await sendAndroidNavigation(.home)
+                lastEmulatorControlMessage = lastNavigationMessage
+            case .recents:
+                await sendAndroidNavigation(.recents)
+                lastEmulatorControlMessage = lastNavigationMessage
+            case .power, .volumeUp, .volumeDown:
+                guard let keyCode = action.keyCode else {
+                    return
+                }
+
+                let target = try await adbService.sendKeyEvent(
+                    title: action.title,
+                    keyCode: keyCode,
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+                lastEmulatorControlMessage = "\(action.title) sent to \(target)"
+            }
+        } catch {
+            lastEmulatorControlMessage = "\(action.title) failed"
+            logService.log("\(action.title) failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    func saveSettings() {
+        settingsService.saveSettings(settings)
+        avdManagerService.apply(settings: settings, toAVDNamed: selectedAVDName)
+        updateOfficialToolbarRepair()
+    }
+
+    func applyPerformanceProfile(_ profile: PerformanceProfile) {
+        settings.performanceProfile = profile
+
+        switch profile {
+        case .balanced:
+            settings.ramPreset = .gb4
+            settings.cpuPreset = .four
+            settings.resolutionPreset = .p1080
+            settings.dpiPreset = .dpi320
+            settings.fpsTarget = .fps60
+            settings.performanceModeEnabled = true
+            settings.batterySavingEnabled = false
+        case .performance:
+            settings.ramPreset = .gb6
+            settings.cpuPreset = .six
+            settings.resolutionPreset = .p1080
+            settings.dpiPreset = .dpi320
+            settings.fpsTarget = .fps90
+            settings.performanceModeEnabled = true
+            settings.batterySavingEnabled = false
+        case .batterySaver:
+            settings.ramPreset = .gb2
+            settings.cpuPreset = .two
+            settings.resolutionPreset = .p720
+            settings.dpiPreset = .dpi240
+            settings.fpsTarget = .fps30
+            settings.performanceModeEnabled = false
+            settings.batterySavingEnabled = true
+        case .custom:
+            break
+        }
+
+        saveSettings()
+        logService.log("\(profile.rawValue) performance profile applied.", level: .success)
+    }
+
+    private func updateOfficialToolbarRepair() {
+        guard settings.repairOfficialEmulatorToolbar,
+              !settings.hideOfficialEmulatorToolbar,
+              emulatorState == .running || emulatorState == .booting else {
+            officialToolbarRepairService.stop()
+            return
+        }
+
+        officialToolbarRepairService.start { [weak self] action in
+            Task { @MainActor in
+                await self?.sendEmulatorControl(action)
+            }
+        }
+    }
+
+    func saveKeyProfiles() {
+        keyMappingService.saveProfiles(keyProfiles)
+    }
+
+    func createDefaultProfile(for app: AndroidApp) {
+        guard !keyProfiles.contains(where: { $0.packageName == app.packageName }) else {
+            return
+        }
+
+        var profile = KeyMappingProfile.empty(for: app)
+        profile.mappings = [
+            .sample(trigger: "W", x: 0.50, y: 0.35),
+            .sample(trigger: "A", x: 0.38, y: 0.55),
+            .sample(trigger: "S", x: 0.50, y: 0.65),
+            .sample(trigger: "D", x: 0.62, y: 0.55)
+        ]
+
+        keyProfiles.append(profile)
+        saveKeyProfiles()
+    }
+
+    func testMapping(_ mapping: InputMapping) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            logService.log("Cannot test key mapping because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running else {
+            logService.log("Start the emulator before testing a key mapping.", level: .warning)
+            return
+        }
+
+        do {
+            try await inputMappingExecutionService.sendTap(
+                mapping: mapping,
+                resolution: settings.resolutionPreset,
+                adbURL: adbURL,
+                serial: await adbService.preferredEmulatorSerial(
+                    adbURL: adbURL,
+                    preferredSerial: deviceInfo.serial
+                )
+            )
+        } catch {
+            logService.log("Key mapping test failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    private func runBusyTask(_ message: String, operation: () async -> Void) async {
+        isBusy = true
+        statusMessage = message
+        await operation()
+        isBusy = false
+    }
+
+    private func startFromAppIconIfNeeded() async {
+        guard settings.launchEmulatorWhenAppOpens else {
+            logService.log("Auto-start is off. The emulator will wait for the Play button or emulator icon.", level: .info)
+            return
+        }
+
+        guard !hasHandledIconLaunch else {
+            return
+        }
+
+        hasHandledIconLaunch = true
+        logService.log("Auto-start is on, so opening the app icon will start the selected emulator.", level: .info)
+        await launchFromEmulatorIcon()
+    }
+
+    private func ensureRecommendedAVDIfNeeded() async {
+        let avdName = selectedAVDName.isEmpty ? avdManagerService.recommendedAVDName : selectedAVDName
+
+        if avdExists(named: avdName) {
+            return
+        }
+
+        guard sdkInfo.canManageAVDs else {
+            logService.log("No launchable AVD was found, and AVD Manager is missing.", level: .warning)
+            return
+        }
+
+        logService.log("No launchable AVD was found, so CleanDroid will create the recommended gaming AVD before starting.", level: .info)
+        await createRecommendedAVD()
+    }
+
+    private func avdExists(named avdName: String) -> Bool {
+        if avds.contains(where: { $0.name == avdName }) {
+            return true
+        }
+
+        let configURL = FileManager.default
+            .homeDirectoryForCurrentUser
+            .appendingPathComponent(".android/avd/\(avdName).avd/config.ini")
+
+        return FileManager.default.fileExists(atPath: configURL.path)
+    }
+
+    private func waitForEmulatorBoot() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            return
+        }
+
+        do {
+            try await adbService.waitForDevice(adbURL: adbURL)
+        } catch {
+            logService.log("ADB did not see the emulator yet: \(error.localizedDescription)", level: .warning)
+        }
+
+        for attempt in 1...45 {
+            statusMessage = "Booting Android... \(attempt)/45"
+
+            if await adbService.bootCompleted(adbURL: adbURL, serial: deviceInfo.serial) {
+                emulatorState = .running
+                deviceInfo = await adbService.deviceInfo(adbURL: adbURL)
+                logService.log("Android finished booting and is ready for games.", level: .success)
+                await refreshGames()
+                await autoLaunchLastGameIfNeeded()
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+
+        emulatorState = .booting
+        logService.log("The emulator started, but Android is still booting. Refresh status in a moment.", level: .warning)
+    }
+
+    private func autoLaunchLastGameIfNeeded() async {
+        guard settings.autoLaunchLastGameAfterBoot,
+              let game = games
+                .filter({ $0.lastPlayed != nil })
+                .sorted(by: { ($0.lastPlayed ?? .distantPast) > ($1.lastPlayed ?? .distantPast) })
+                .first else {
+            return
+        }
+
+        logService.log("Auto-launching last played game: \(game.name).", level: .info)
+        await launch(game)
+    }
+}

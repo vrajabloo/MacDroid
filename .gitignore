@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+Build/
+Packaging/AppIcon.icns
+Packaging/AppIcon.iconset/
+DerivedData/
+*.xcuserdata/
+*.xcuserstate
+.DS_Store
