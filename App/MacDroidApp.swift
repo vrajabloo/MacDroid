@@ -29,5 +29,12 @@ struct MacDroidApp: App {
         }
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
+
+        Window("Key Mapping Overlay", id: "key-mapping-overlay") {
+            KeyMappingOverlayWindowView()
+                .environmentObject(environment)
+        }
+        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
     }
 }

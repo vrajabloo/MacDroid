@@ -18,7 +18,7 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 - Network Boost with direct DNS launch flag
 - Performance profiles
 - Official Google Emulator toolbar repair
-- Key mapping MVP with gamepad-ready profile fields
+- Live key mapping overlay through ADB input
 - Beginner-friendly logs
 
 ## Build

@@ -73,22 +73,22 @@ The app does not promise guaranteed FPS across all games.
 
 ## Key Mapping
 
-The current key mapping implementation is an MVP:
+MacDroid now includes a live overlay that can send saved keyboard and mouse mappings through ADB input commands.
+
+Current support:
 
 - profiles are saved per game
 - normalized tap coordinates are stored
-- manual ADB tap tests work
-- input bridge and gamepad fields are prepared
+- tap, long-press, and swipe commands work through ADB
+- the overlay can capture keyboard input while focused
+- overlay mouse clicks can send direct Android taps
 
-Live real-time keyboard/mouse/gamepad injection is future work.
+Important limitations:
 
-Possible future approaches:
-
-- `adb shell input tap x y`
-- `adb shell input keyevent`
-- transparent macOS overlay
-- native gamepad event bridge
-- per-game input service
+- the overlay window must stay focused for keyboard capture
+- ADB input has more latency than a native emulator input engine
+- native gamepad bridging is still future work
+- very fast competitive games may need a lower-latency input bridge later
 
 ## Official Emulator Toolbar
 

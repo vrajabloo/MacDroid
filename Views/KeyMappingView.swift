@@ -2,14 +2,18 @@
 // KeyMappingView.swift
 // MacDroid
 //
-// MVP key mapping editor. It saves per-game profiles and normalized tap points;
-// actual input injection is intentionally isolated for a future implementation.
+// A practical per-game key mapping editor. Users can place touch points on a
+// 16:9 canvas, bind them to keyboard/mouse triggers, and run them through ADB.
 
 import SwiftUI
 
 struct KeyMappingView: View {
     @EnvironmentObject private var app: AppEnvironment
+    @Environment(\.openWindow) private var openWindow
     @StateObject private var viewModel = KeyMappingViewModel()
+    @State private var newTrigger = "Space"
+    @State private var newInputType: InputMappingType = .keyboard
+    @State private var newAction: InputMappingAction = .tap
 
     private var selectedApp: AndroidApp? {
         if let packageName = viewModel.selectedPackageName {
@@ -37,7 +41,7 @@ struct KeyMappingView: View {
             Text("Key Mapping")
                 .font(.largeTitle.weight(.black))
 
-            Text("Create per-game control profiles.")
+            Text("Per-game controls")
                 .foregroundStyle(.secondary)
 
             if app.games.isEmpty {
@@ -77,7 +81,7 @@ struct KeyMappingView: View {
                         profileSettings(for: selectedApp)
                         mappingCanvas(for: selectedApp)
                         mappingList(for: selectedApp)
-                        limitationPanel
+                        adbBridgePanel
                     }
                     .padding(28)
                 }
@@ -93,7 +97,7 @@ struct KeyMappingView: View {
     }
 
     private func editorHeader(for game: AndroidApp) -> some View {
-        HStack {
+        HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(game.name)
                     .font(.largeTitle.weight(.black))
@@ -107,10 +111,76 @@ struct KeyMappingView: View {
             Button {
                 app.createDefaultProfile(for: game)
             } label: {
-                Label("Create WASD Profile", systemImage: "plus.circle.fill")
+                Label("WASD Preset", systemImage: "wand.and.stars")
+            }
+
+            Button {
+                app.activateKeyMapping(for: game)
+                openWindow(id: "key-mapping-overlay")
+            } label: {
+                Label("Live Overlay", systemImage: "keyboard.badge.eye")
             }
             .buttonStyle(.borderedProminent)
             .tint(Color(hex: 0x1EEA8A))
+        }
+    }
+
+    private func profileSettings(for game: AndroidApp) -> some View {
+        PanelView {
+            VStack(alignment: .leading, spacing: 14) {
+                Label("Profile", systemImage: "gamecontroller.fill")
+                    .font(.title3.weight(.bold))
+
+                if let index = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }) {
+                    TextField("Profile name", text: profileNameBinding(index: index))
+
+                    Picker("Mode", selection: inputBridgeBinding(index: index)) {
+                        ForEach(InputBridgeMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+
+                    Toggle("Gamepad-ready profile", isOn: gamepadBinding(index: index))
+
+                    Text(app.keyProfiles[index].inputBridgeMode.summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack {
+                        Button {
+                            addGamepadSample(to: game)
+                        } label: {
+                            Label("Add Gamepad A", systemImage: "button.programmable")
+                        }
+
+                        Button {
+                            app.activateKeyMapping(for: game)
+                            openWindow(id: "key-mapping-overlay")
+                        } label: {
+                            Label("Open Overlay", systemImage: "rectangle.on.rectangle")
+                        }
+
+                        Button {
+                            app.saveKeyProfiles()
+                        } label: {
+                            Label("Save", systemImage: "square.and.arrow.down")
+                        }
+                    }
+                } else {
+                    EmptyStateView(
+                        systemImage: "gamecontroller",
+                        title: "No profile yet",
+                        message: "Create a profile before adding controls."
+                    )
+
+                    Button {
+                        _ = app.ensureKeyMappingProfile(for: game)
+                    } label: {
+                        Label("Create Profile", systemImage: "plus.circle.fill")
+                    }
+                }
+            }
         }
     }
 
@@ -120,8 +190,30 @@ struct KeyMappingView: View {
 
         return PanelView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Tap layout")
-                    .font(.title3.weight(.bold))
+                HStack {
+                    Text("Tap layout")
+                        .font(.title3.weight(.bold))
+
+                    Spacer()
+
+                    Picker("Type", selection: $newInputType) {
+                        ForEach(InputMappingType.allCases) { type in
+                            Text(type.rawValue).tag(type)
+                        }
+                    }
+                    .frame(width: 130)
+
+                    Picker("Action", selection: $newAction) {
+                        ForEach(InputMappingAction.allCases) { action in
+                            Text(action.rawValue).tag(action)
+                        }
+                    }
+                    .frame(width: 150)
+
+                    TextField("Trigger", text: $newTrigger)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 120)
+                }
 
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
@@ -138,11 +230,34 @@ struct KeyMappingView: View {
                         )
 
                     GeometryReader { proxy in
+                        Rectangle()
+                            .fill(Color.clear)
+                            .contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onEnded { value in
+                                        addMapping(
+                                            to: game,
+                                            at: normalizedPoint(from: value.location, in: proxy.size)
+                                        )
+                                    }
+                            )
+
                         ForEach(mappings) { mapping in
                             mappingMarker(mapping)
                                 .position(
-                                    x: proxy.size.width * mapping.tapPoint.x,
-                                    y: proxy.size.height * mapping.tapPoint.y
+                                    x: proxy.size.width * mapping.tapPoint.clamped.x,
+                                    y: proxy.size.height * mapping.tapPoint.clamped.y
+                                )
+                                .gesture(
+                                    DragGesture(minimumDistance: 0)
+                                        .onChanged { value in
+                                            moveMapping(
+                                                mapping,
+                                                in: game,
+                                                to: normalizedPoint(from: value.location, in: proxy.size)
+                                            )
+                                        }
                                 )
                         }
                     }
@@ -151,9 +266,9 @@ struct KeyMappingView: View {
 
                 HStack {
                     Button {
-                        addSampleMapping(to: game)
+                        addMapping(to: game, at: NormalizedPoint(x: 0.78, y: 0.72))
                     } label: {
-                        Label("Add Tap", systemImage: "plus")
+                        Label("Add Control", systemImage: "plus")
                     }
 
                     Button {
@@ -166,172 +281,185 @@ struct KeyMappingView: View {
         }
     }
 
-    private func profileSettings(for game: AndroidApp) -> some View {
-        PanelView {
-            VStack(alignment: .leading, spacing: 14) {
-                Label("Input bridge", systemImage: "gamecontroller.fill")
-                    .font(.title3.weight(.bold))
-
-                if let index = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }) {
-                    Picker("Mode", selection: inputBridgeBinding(index: index)) {
-                        ForEach(InputBridgeMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-
-                    Toggle("Prepare gamepad profile", isOn: gamepadBinding(index: index))
-
-                    Text(app.keyProfiles[index].inputBridgeMode.summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack {
-                        Button {
-                            addGamepadSample(to: game)
-                        } label: {
-                            Label("Add Gamepad A", systemImage: "button.programmable")
-                        }
-
-                        Button {
-                            app.saveKeyProfiles()
-                        } label: {
-                            Label("Save Input Profile", systemImage: "square.and.arrow.down")
-                        }
-                    }
-                } else {
-                    EmptyStateView(
-                        systemImage: "gamecontroller",
-                        title: "No profile yet",
-                        message: "Create a profile before enabling future gamepad or overlay input."
-                    )
-
-                    Button {
-                        app.createDefaultProfile(for: game)
-                    } label: {
-                        Label("Create Profile", systemImage: "plus.circle.fill")
-                    }
-                }
-            }
-        }
-    }
-
     private func mappingMarker(_ mapping: InputMapping) -> some View {
         VStack(spacing: 4) {
-            Text(mapping.trigger)
+            Text(mapping.trigger.isEmpty ? "?" : mapping.trigger)
                 .font(.headline.weight(.bold))
                 .foregroundStyle(.black)
-                .frame(width: 42, height: 42)
-                .background(Color(hex: 0x1EEA8A), in: Circle())
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+                .frame(width: 46, height: 46)
+                .background(mapping.isEnabled ? Color(hex: 0x1EEA8A) : Color.gray, in: Circle())
 
-            Text(mapping.inputType.rawValue)
-                .font(.caption2.weight(.semibold))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.black.opacity(0.5), in: Capsule())
+            HStack(spacing: 4) {
+                Image(systemName: mapping.action.systemImage)
+                Text(mapping.inputType.rawValue)
+            }
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.black.opacity(0.55), in: Capsule())
         }
     }
 
     private func mappingList(for game: AndroidApp) -> some View {
-        let profile = viewModel.profile(for: game, in: app.keyProfiles)
-        let mappings = profile?.mappings ?? []
-
-        return PanelView {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Mappings")
-                    .font(.title3.weight(.bold))
-
-                if mappings.isEmpty {
+        guard let profileIndex = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }) else {
+            return AnyView(
+                PanelView {
                     EmptyStateView(
                         systemImage: "keyboard.badge.ellipsis",
                         title: "No controls mapped",
-                        message: "Create a WASD profile or add a tap mapping."
+                        message: "Create a profile or click the tap layout to add controls."
                     )
-                    .frame(maxWidth: .infinity)
-                } else {
-                    Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
-                        GridRow {
-                            Text("Input").foregroundStyle(.secondary)
-                            Text("Type").foregroundStyle(.secondary)
-                            Text("Tap position").foregroundStyle(.secondary)
-                            Text("Note").foregroundStyle(.secondary)
-                            Text("Test").foregroundStyle(.secondary)
-                        }
+                }
+            )
+        }
 
-                        ForEach(mappings) { mapping in
-                            GridRow {
-                                Text(mapping.trigger).fontWeight(.semibold)
-                                Text(mapping.inputType.rawValue)
-                                Text("\(Int(mapping.tapPoint.x * 100))%, \(Int(mapping.tapPoint.y * 100))%")
-                                Text(mapping.note).foregroundStyle(.secondary)
-                                Button {
-                                    Task { await app.testMapping(mapping) }
-                                } label: {
-                                    Image(systemName: "dot.scope")
-                                }
-                                .help("Send this tap through ADB")
-                                .disabled(app.emulatorState != .running)
+        return AnyView(
+            PanelView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Mappings")
+                        .font(.title3.weight(.bold))
+
+                    if app.keyProfiles[profileIndex].mappings.isEmpty {
+                        EmptyStateView(
+                            systemImage: "keyboard.badge.ellipsis",
+                            title: "No controls mapped",
+                            message: "Create a WASD preset or click the tap layout."
+                        )
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(spacing: 10) {
+                            ForEach(app.keyProfiles[profileIndex].mappings) { mapping in
+                                MappingEditorRow(
+                                    mapping: mappingBinding(game: game, mapping: mapping),
+                                    onTest: { currentMapping in
+                                        Task { await app.testMapping(currentMapping) }
+                                    },
+                                    onDelete: {
+                                        deleteMapping(mapping, from: game)
+                                    }
+                                )
                             }
                         }
                     }
-                    .font(.callout)
                 }
             }
-        }
+        )
     }
 
-    private var limitationPanel: some View {
+    private var adbBridgePanel: some View {
         PanelView {
             VStack(alignment: .leading, spacing: 10) {
-                Label("MVP limitation", systemImage: "info.circle.fill")
+                Label("ADB bridge", systemImage: "bolt.horizontal.circle.fill")
                     .font(.headline)
                     .foregroundStyle(Color(hex: 0xFFD166))
 
-                Text("This version saves key mapping profiles and loads them when a game launches. Direct input injection is intentionally left behind a clean service boundary for a future build using ADB input commands, a transparent overlay, or a gamepad event bridge.")
+                Text("Live Overlay sends keyboard and mouse mappings through Android's official ADB input commands. It is useful now, but very fast competitive games may still need a future lower-latency input bridge.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    private func addSampleMapping(to game: AndroidApp) {
-        if let index = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }) {
-            app.keyProfiles[index].mappings.append(
-                InputMapping.sample(trigger: "Space", x: 0.78, y: 0.72)
-            )
-            app.keyProfiles[index].updatedAt = .now
-        } else {
-            var profile = KeyMappingProfile.empty(for: game)
-            profile.mappings.append(InputMapping.sample(trigger: "Space", x: 0.78, y: 0.72))
-            app.keyProfiles.append(profile)
-        }
+    private func addMapping(to game: AndroidApp, at point: NormalizedPoint) {
+        let profileIndex = app.ensureKeyMappingProfile(for: game)
+        let trigger = newTrigger.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Space" : newTrigger
+        let mapping = InputMapping(
+            inputType: newInputType,
+            trigger: trigger,
+            action: newAction,
+            tapPoint: point.clamped,
+            secondaryPoint: newAction == .swipe ? NormalizedPoint(x: min(1, point.x + 0.12), y: point.y).clamped : nil,
+            durationMilliseconds: newAction.defaultDurationMilliseconds,
+            note: "\(newAction.rawValue) at \(Int(point.clamped.x * 100))%, \(Int(point.clamped.y * 100))%"
+        )
 
+        app.keyProfiles[profileIndex].mappings.append(mapping)
+        app.keyProfiles[profileIndex].inputBridgeMode = .liveOverlay
+        app.keyProfiles[profileIndex].updatedAt = .now
         app.saveKeyProfiles()
     }
 
     private func addGamepadSample(to game: AndroidApp) {
         let mapping = InputMapping(
-            id: UUID(),
             inputType: .gamepad,
             trigger: "A",
+            action: .tap,
             tapPoint: NormalizedPoint(x: 0.82, y: 0.72),
-            note: "Future gamepad button tap"
+            note: "Gamepad A button tap"
         )
 
-        if let index = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }) {
-            app.keyProfiles[index].gamepadEnabled = true
-            app.keyProfiles[index].inputBridgeMode = .gamepadPlanned
-            app.keyProfiles[index].mappings.append(mapping)
-            app.keyProfiles[index].updatedAt = .now
-        } else {
-            var profile = KeyMappingProfile.empty(for: game)
-            profile.gamepadEnabled = true
-            profile.inputBridgeMode = .gamepadPlanned
-            profile.mappings.append(mapping)
-            app.keyProfiles.append(profile)
+        let profileIndex = app.ensureKeyMappingProfile(for: game)
+        app.keyProfiles[profileIndex].gamepadEnabled = true
+        app.keyProfiles[profileIndex].inputBridgeMode = .gamepadPlanned
+        app.keyProfiles[profileIndex].mappings.append(mapping)
+        app.keyProfiles[profileIndex].updatedAt = .now
+        app.saveKeyProfiles()
+    }
+
+    private func moveMapping(_ mapping: InputMapping, in game: AndroidApp, to point: NormalizedPoint) {
+        guard let profileIndex = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }),
+              let mappingIndex = app.keyProfiles[profileIndex].mappings.firstIndex(where: { $0.id == mapping.id }) else {
+            return
         }
 
+        app.keyProfiles[profileIndex].mappings[mappingIndex].tapPoint = point.clamped
+        app.keyProfiles[profileIndex].mappings[mappingIndex].updatedNoteForPosition()
+        app.keyProfiles[profileIndex].updatedAt = .now
+    }
+
+    private func deleteMapping(_ mapping: InputMapping, from game: AndroidApp) {
+        guard let profileIndex = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }) else {
+            return
+        }
+
+        app.keyProfiles[profileIndex].mappings.removeAll { $0.id == mapping.id }
+        app.keyProfiles[profileIndex].updatedAt = .now
         app.saveKeyProfiles()
+    }
+
+    private func normalizedPoint(from location: CGPoint, in size: CGSize) -> NormalizedPoint {
+        guard size.width > 0, size.height > 0 else {
+            return NormalizedPoint(x: 0.5, y: 0.5)
+        }
+
+        return NormalizedPoint(
+            x: Double(location.x / size.width),
+            y: Double(location.y / size.height)
+        ).clamped
+    }
+
+    private func mappingBinding(game: AndroidApp, mapping: InputMapping) -> Binding<InputMapping> {
+        Binding(
+            get: {
+                guard let profileIndex = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }),
+                      let mappingIndex = app.keyProfiles[profileIndex].mappings.firstIndex(where: { $0.id == mapping.id }) else {
+                    return mapping
+                }
+
+                return app.keyProfiles[profileIndex].mappings[mappingIndex]
+            },
+            set: { updatedMapping in
+                guard let profileIndex = app.keyProfiles.firstIndex(where: { $0.packageName == game.packageName }),
+                      let mappingIndex = app.keyProfiles[profileIndex].mappings.firstIndex(where: { $0.id == mapping.id }) else {
+                    return
+                }
+
+                app.keyProfiles[profileIndex].mappings[mappingIndex] = updatedMapping
+                app.keyProfiles[profileIndex].updatedAt = .now
+            }
+        )
+    }
+
+    private func profileNameBinding(index: Int) -> Binding<String> {
+        Binding(
+            get: { app.keyProfiles[index].name },
+            set: { name in
+                app.keyProfiles[index].name = name
+                app.keyProfiles[index].updatedAt = .now
+            }
+        )
     }
 
     private func inputBridgeBinding(index: Int) -> Binding<InputBridgeMode> {
@@ -354,5 +482,132 @@ struct KeyMappingView: View {
                 app.saveKeyProfiles()
             }
         )
+    }
+}
+
+private struct MappingEditorRow: View {
+    @Binding var mapping: InputMapping
+    let onTest: (InputMapping) -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Toggle("", isOn: $mapping.isEnabled)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+
+                TextField("Trigger", text: $mapping.trigger)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 120)
+
+                Picker("Type", selection: $mapping.inputType) {
+                    ForEach(InputMappingType.allCases) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
+                .frame(width: 130)
+
+                Picker("Action", selection: $mapping.action) {
+                    ForEach(InputMappingAction.allCases) { action in
+                        Text(action.rawValue).tag(action)
+                    }
+                }
+                .frame(width: 150)
+
+                Button {
+                    onTest(mapping)
+                } label: {
+                    Image(systemName: "dot.scope")
+                }
+                .help("Send this mapping through ADB")
+
+                Button(role: .destructive, action: onDelete) {
+                    Image(systemName: "trash")
+                }
+                .help("Delete mapping")
+            }
+
+            HStack(spacing: 14) {
+                pointSlider(title: "X", value: xBinding)
+                pointSlider(title: "Y", value: yBinding)
+
+                Stepper("Duration \(mapping.durationMilliseconds) ms", value: $mapping.durationMilliseconds, in: 50...5_000, step: 50)
+                    .frame(width: 210)
+            }
+
+            if mapping.action == .swipe {
+                HStack(spacing: 14) {
+                    pointSlider(title: "End X", value: secondaryXBinding)
+                    pointSlider(title: "End Y", value: secondaryYBinding)
+                }
+            }
+
+            TextField("Note", text: $mapping.note)
+                .textFieldStyle(.roundedBorder)
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var xBinding: Binding<Double> {
+        Binding(
+            get: { mapping.tapPoint.x },
+            set: { mapping.tapPoint.x = $0 }
+        )
+    }
+
+    private var yBinding: Binding<Double> {
+        Binding(
+            get: { mapping.tapPoint.y },
+            set: { mapping.tapPoint.y = $0 }
+        )
+    }
+
+    private var secondaryXBinding: Binding<Double> {
+        Binding(
+            get: { mapping.secondaryPoint?.x ?? mapping.tapPoint.x },
+            set: { value in
+                var point = mapping.secondaryPoint ?? mapping.tapPoint
+                point.x = value
+                mapping.secondaryPoint = point.clamped
+            }
+        )
+    }
+
+    private var secondaryYBinding: Binding<Double> {
+        Binding(
+            get: { mapping.secondaryPoint?.y ?? mapping.tapPoint.y },
+            set: { value in
+                var point = mapping.secondaryPoint ?? mapping.tapPoint
+                point.y = value
+                mapping.secondaryPoint = point.clamped
+            }
+        )
+    }
+
+    private func pointSlider(title: String, value: Binding<Double>) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Slider(value: value, in: 0...1)
+                .frame(width: 120)
+            Text("\(Int(value.wrappedValue * 100))%")
+                .font(.caption.monospacedDigit())
+                .frame(width: 38, alignment: .trailing)
+        }
+    }
+}
+
+private extension InputMapping {
+    mutating func updatedNoteForPosition() {
+        if note.hasPrefix("Tap at") || note.hasPrefix("Long Press at") || note.hasPrefix("Swipe at") {
+            note = "\(action.rawValue) at \(Int(tapPoint.clamped.x * 100))%, \(Int(tapPoint.clamped.y * 100))%"
+        }
     }
 }

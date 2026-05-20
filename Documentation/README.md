@@ -80,12 +80,13 @@ emulator -dns-server <servers>
 
 ### Key Mapping
 
-The Key Mapping screen stores per-game input profiles. The current MVP supports saved mappings and manual tap tests. It prepares the model for:
+The Key Mapping screen stores per-game input profiles and includes a live floating overlay. Keyboard and mouse triggers can run tap, long-press, and swipe actions through ADB.
 
-- live keyboard overlay
-- mouse mapping
-- gamepad event bridging
 - per-game profiles
+- click-to-place tap points
+- editable keyboard, mouse, and gamepad-ready triggers
+- live overlay window
+- ADB tap, long-press, and swipe execution
 
 ### Settings
 
@@ -198,7 +199,7 @@ Persists saved key mapping profiles.
 
 ### InputMappingExecutionService
 
-Sends manual ADB tap tests from saved normalized tap coordinates.
+Converts saved normalized tap coordinates into the emulator's current Android screen size and sends ADB input commands for tap, long-press, swipe, and overlay clicks.
 
 ### OfficialEmulatorToolbarRepairService
 

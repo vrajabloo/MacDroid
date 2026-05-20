@@ -24,6 +24,9 @@ final class AppEnvironment: ObservableObject {
     @Published var networkDiagnosticText = ""
     @Published var lastNavigationMessage = ""
     @Published var lastEmulatorControlMessage = ""
+    @Published var activeKeyMappingPackageName: String?
+    @Published var keyMappingOverlayIsArmed = false
+    @Published var keyMappingOverlayMessage = "Open a game profile to start mapping."
     @Published var statusMessage = "Ready"
 
     let logService: LogService
@@ -280,8 +283,11 @@ final class AppEnvironment: ObservableObject {
 
         await runBusyTask("Launching \(app.name)...") {
             do {
-                if keyProfiles.contains(where: { $0.packageName == app.packageName }) {
-                    logService.log("Loaded saved key mapping profile for \(app.name). Direct input injection is planned for a future build.", level: .info)
+                if let profile = keyProfiles.first(where: { $0.packageName == app.packageName }) {
+                    activeKeyMappingPackageName = app.packageName
+                    keyMappingOverlayIsArmed = true
+                    keyMappingOverlayMessage = "\(profile.name) is armed. Open the Key Mapping Overlay to use keyboard controls."
+                    logService.log("Loaded key mapping profile for \(app.name). Open the overlay window to send mapped controls through ADB.", level: .info)
                 }
 
                 try await adbService.launch(
@@ -638,24 +644,71 @@ final class AppEnvironment: ObservableObject {
     }
 
     func saveKeyProfiles() {
+        if let activeKeyMappingPackageName,
+           !keyProfiles.contains(where: { $0.packageName == activeKeyMappingPackageName }) {
+            self.activeKeyMappingPackageName = nil
+            keyMappingOverlayIsArmed = false
+        }
+
         keyMappingService.saveProfiles(keyProfiles)
     }
 
-    func createDefaultProfile(for app: AndroidApp) {
-        guard !keyProfiles.contains(where: { $0.packageName == app.packageName }) else {
-            return
+    @discardableResult
+    func ensureKeyMappingProfile(for app: AndroidApp) -> Int {
+        if let index = keyProfiles.firstIndex(where: { $0.packageName == app.packageName }) {
+            return index
         }
 
-        var profile = KeyMappingProfile.empty(for: app)
-        profile.mappings = [
+        let profile = KeyMappingProfile.empty(for: app)
+        keyProfiles.append(profile)
+        saveKeyProfiles()
+        return keyProfiles.count - 1
+    }
+
+    func createDefaultProfile(for app: AndroidApp) {
+        let profileIndex = ensureKeyMappingProfile(for: app)
+
+        keyProfiles[profileIndex].mappings = [
             .sample(trigger: "W", x: 0.50, y: 0.35),
             .sample(trigger: "A", x: 0.38, y: 0.55),
             .sample(trigger: "S", x: 0.50, y: 0.65),
-            .sample(trigger: "D", x: 0.62, y: 0.55)
+            .sample(trigger: "D", x: 0.62, y: 0.55),
+            InputMapping(
+                inputType: .keyboard,
+                trigger: "Space",
+                action: .tap,
+                tapPoint: NormalizedPoint(x: 0.80, y: 0.72),
+                note: "Jump / main action"
+            ),
+            InputMapping(
+                inputType: .mouse,
+                trigger: "Left Click",
+                action: .tap,
+                tapPoint: NormalizedPoint(x: 0.86, y: 0.58),
+                note: "Fire / primary action"
+            )
         ]
-
-        keyProfiles.append(profile)
+        keyProfiles[profileIndex].inputBridgeMode = .liveOverlay
+        keyProfiles[profileIndex].updatedAt = .now
+        activateKeyMapping(for: app)
         saveKeyProfiles()
+    }
+
+    func activateKeyMapping(for app: AndroidApp) {
+        let profileIndex = ensureKeyMappingProfile(for: app)
+        keyProfiles[profileIndex].inputBridgeMode = .liveOverlay
+        keyProfiles[profileIndex].updatedAt = .now
+        activeKeyMappingPackageName = app.packageName
+        keyMappingOverlayIsArmed = true
+        keyMappingOverlayMessage = "\(app.name) controls are active."
+        logService.log("Key mapping overlay armed for \(app.name). Keep the overlay focused while playing.", level: .success)
+        saveKeyProfiles()
+    }
+
+    func stopKeyMappingOverlay() {
+        keyMappingOverlayIsArmed = false
+        keyMappingOverlayMessage = "Key mapping overlay paused."
+        logService.log("Key mapping overlay paused.", level: .info)
     }
 
     func testMapping(_ mapping: InputMapping) async {
@@ -670,9 +723,9 @@ final class AppEnvironment: ObservableObject {
         }
 
         do {
-            try await inputMappingExecutionService.sendTap(
+            try await inputMappingExecutionService.send(
                 mapping: mapping,
-                resolution: settings.resolutionPreset,
+                fallbackResolution: settings.resolutionPreset,
                 adbURL: adbURL,
                 serial: await adbService.preferredEmulatorSerial(
                     adbURL: adbURL,
@@ -682,6 +735,106 @@ final class AppEnvironment: ObservableObject {
         } catch {
             logService.log("Key mapping test failed: \(error.localizedDescription)", level: .error)
         }
+    }
+
+    func runKeyMappingTrigger(_ trigger: String) async {
+        guard keyMappingOverlayIsArmed else {
+            keyMappingOverlayMessage = "Overlay is paused."
+            return
+        }
+
+        guard let activeKeyMappingPackageName,
+              let profile = keyProfiles.first(where: { $0.packageName == activeKeyMappingPackageName }) else {
+            keyMappingOverlayMessage = "No active profile."
+            return
+        }
+
+        guard let mapping = profile.mappings.first(where: { mapping in
+            mapping.isEnabled && normalizedTrigger(mapping.trigger) == normalizedTrigger(trigger)
+        }) else {
+            keyMappingOverlayMessage = "No mapping for \(trigger)."
+            return
+        }
+
+        await runKeyMapping(mapping, source: trigger)
+    }
+
+    func runOverlayMouseTap(at point: NormalizedPoint) async {
+        guard keyMappingOverlayIsArmed else {
+            keyMappingOverlayMessage = "Overlay is paused."
+            return
+        }
+
+        if let activeKeyMappingPackageName,
+           let profile = keyProfiles.first(where: { $0.packageName == activeKeyMappingPackageName }),
+           let clickMapping = profile.mappings.first(where: { mapping in
+               mapping.isEnabled && normalizedTrigger(mapping.trigger) == normalizedTrigger("Left Click")
+           }) {
+            await runKeyMapping(clickMapping, source: "Left Click")
+            return
+        }
+
+        guard let adbURL = sdkInfo.adbURL else {
+            keyMappingOverlayMessage = "ADB not found."
+            logService.log("Cannot send overlay mouse tap because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running else {
+            keyMappingOverlayMessage = "Start emulator first."
+            logService.log("Start the emulator before using the key mapping overlay.", level: .warning)
+            return
+        }
+
+        do {
+            try await inputMappingExecutionService.sendDirectTap(
+                at: point,
+                fallbackResolution: settings.resolutionPreset,
+                adbURL: adbURL,
+                serial: await adbService.preferredEmulatorSerial(
+                    adbURL: adbURL,
+                    preferredSerial: deviceInfo.serial
+                )
+            )
+            keyMappingOverlayMessage = "Overlay tap sent."
+        } catch {
+            keyMappingOverlayMessage = "Overlay tap failed."
+            logService.log("Overlay tap failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    private func runKeyMapping(_ mapping: InputMapping, source: String) async {
+        guard let adbURL = sdkInfo.adbURL else {
+            keyMappingOverlayMessage = "ADB not found."
+            logService.log("Cannot run \(source) because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running else {
+            keyMappingOverlayMessage = "Start emulator first."
+            logService.log("Start the emulator before using key mapping.", level: .warning)
+            return
+        }
+
+        do {
+            try await inputMappingExecutionService.send(
+                mapping: mapping,
+                fallbackResolution: settings.resolutionPreset,
+                adbURL: adbURL,
+                serial: await adbService.preferredEmulatorSerial(
+                    adbURL: adbURL,
+                    preferredSerial: deviceInfo.serial
+                )
+            )
+            keyMappingOverlayMessage = "\(source) sent."
+        } catch {
+            keyMappingOverlayMessage = "\(source) failed."
+            logService.log("Key mapping \(source) failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
+    private func normalizedTrigger(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 
     private func runBusyTask(_ message: String, operation: () async -> Void) async {

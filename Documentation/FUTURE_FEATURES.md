@@ -4,13 +4,12 @@ MacDroid already has the foundation for a commercial-emulator-style Android gami
 
 ## Input & Controls
 
-- Live keyboard mapping with a transparent macOS overlay.
-- Mouse click and drag mapping.
-- Per-game mapping auto-load when a game launches.
+- Lower-latency input bridge beyond ADB commands.
+- Mouse drag camera mapping.
 - Gamepad event bridge using native macOS controller APIs.
 - Sensitivity profiles for shooter and MOBA-style games.
 - Import/export key mapping profiles.
-- Visual overlay editor on top of the emulator window.
+- Automatic overlay alignment with the emulator window.
 
 ## Gaming Tools
 
