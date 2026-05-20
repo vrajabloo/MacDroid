@@ -47,43 +47,86 @@ struct LibraryView: View {
             }
         }
         .padding(28)
+        .frame(maxWidth: 1120, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Game Library")
-                    .font(.largeTitle.weight(.black))
-                Text("Installed Android apps discovered through ADB.")
-                    .foregroundStyle(.secondary)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 14) {
+                headerTitle
+                Spacer(minLength: 12)
+                headerControls
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 14) {
+                headerTitle
+                headerControls
+            }
+        }
+    }
 
-            Picker("Filter", selection: $viewModel.filter) {
-                ForEach(LibraryFilter.allCases) { filter in
-                    Label(filter.rawValue, systemImage: filter.systemImage).tag(filter)
+    private var headerTitle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Game Library")
+                .font(.largeTitle.weight(.black))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text("Installed Android apps discovered through ADB.")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var headerControls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                filterPicker
+                searchField
+                refreshButton
+                playStoreButton
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                filterPicker
+                searchField
+                HStack(spacing: 10) {
+                    refreshButton
+                    playStoreButton
                 }
             }
-            .pickerStyle(.segmented)
-            .frame(width: 280)
-
-            TextField("Search games or packages", text: $viewModel.searchText)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 260)
-
-            Button {
-                Task { await app.refreshGames() }
-            } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
-            }
-
-            Button {
-                Task { await app.openPlayStore() }
-            } label: {
-                Label("Play Store", systemImage: "play.square.fill")
-            }
-            .disabled(app.emulatorState != .running)
         }
+    }
+
+    private var filterPicker: some View {
+        Picker("Filter", selection: $viewModel.filter) {
+            ForEach(LibraryFilter.allCases) { filter in
+                Label(filter.rawValue, systemImage: filter.systemImage).tag(filter)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(width: 280)
+    }
+
+    private var searchField: some View {
+        TextField("Search games or packages", text: $viewModel.searchText)
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 260)
+    }
+
+    private var refreshButton: some View {
+        Button {
+            Task { await app.refreshGames() }
+        } label: {
+            Label("Refresh", systemImage: "arrow.clockwise")
+        }
+    }
+
+    private var playStoreButton: some View {
+        Button {
+            Task { await app.openPlayStore() }
+        } label: {
+            Label("Play Store", systemImage: "play.square.fill")
+        }
+        .disabled(app.emulatorState != .running)
     }
 }

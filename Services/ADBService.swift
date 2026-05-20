@@ -471,14 +471,15 @@ final class ADBService {
         }
 
         let withoutPrefix = cleaned.replacingOccurrences(of: "package:", with: "")
-        let parts = withoutPrefix.split(separator: "=", maxSplits: 1).map(String.init)
 
         let sourceDir: String?
         let packageName: String
 
-        if parts.count == 2 {
-            sourceDir = parts[0]
-            packageName = parts[1]
+        // ADB prints "apkPath=packageName". Some APK paths also contain "=",
+        // so splitting at the first "=" produces broken package labels.
+        if let separatorIndex = withoutPrefix.lastIndex(of: "=") {
+            sourceDir = String(withoutPrefix[..<separatorIndex])
+            packageName = String(withoutPrefix[withoutPrefix.index(after: separatorIndex)...])
         } else {
             sourceDir = nil
             packageName = withoutPrefix

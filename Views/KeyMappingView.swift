@@ -24,25 +24,47 @@ struct KeyMappingView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            gameList
-                .frame(width: 300)
-                .background(Color.black.opacity(0.16))
+        GeometryReader { proxy in
+            if proxy.size.width < 1_040 {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        gameList(compact: true)
+                        editorContent
+                    }
+                    .padding(24)
+                    .frame(maxWidth: 840, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+            } else {
+                HStack(spacing: 0) {
+                    gameList(compact: false)
+                        .frame(width: 260)
+                        .background(Color.black.opacity(0.16))
 
-            Divider()
-                .opacity(0.28)
+                    Divider()
+                        .opacity(0.28)
 
-            editor
+                    editor
+                }
+            }
         }
     }
 
-    private var gameList: some View {
+    private func gameList(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Key Mapping")
-                .font(.largeTitle.weight(.black))
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Key Mapping")
+                        .font(compact ? .title.weight(.black) : .largeTitle.weight(.black))
 
-            Text("Per-game controls")
-                .foregroundStyle(.secondary)
+                    Text("Per-game controls")
+                        .foregroundStyle(.secondary)
+                }
+
+                if compact {
+                    Spacer()
+                }
+            }
 
             if app.games.isEmpty {
                 EmptyStateView(
@@ -51,6 +73,14 @@ struct KeyMappingView: View {
                     message: "Refresh the library after the emulator boots."
                 )
                 Spacer()
+            } else if compact {
+                Picker("Game", selection: $viewModel.selectedPackageName) {
+                    ForEach(app.games) { game in
+                        Text(game.name).tag(Optional(game.packageName))
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
             } else {
                 List(app.games, selection: $viewModel.selectedPackageName) { game in
                     VStack(alignment: .leading, spacing: 3) {
@@ -73,17 +103,23 @@ struct KeyMappingView: View {
     }
 
     private var editor: some View {
+        ScrollView {
+            editorContent
+                .padding(28)
+                .frame(maxWidth: 840, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private var editorContent: some View {
         Group {
             if let selectedApp {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        editorHeader(for: selectedApp)
-                        profileSettings(for: selectedApp)
-                        mappingCanvas(for: selectedApp)
-                        mappingList(for: selectedApp)
-                        adbBridgePanel
-                    }
-                    .padding(28)
+                VStack(alignment: .leading, spacing: 22) {
+                    editorHeader(for: selectedApp)
+                    profileSettings(for: selectedApp)
+                    mappingCanvas(for: selectedApp)
+                    mappingList(for: selectedApp)
+                    adbBridgePanel
                 }
             } else {
                 EmptyStateView(
@@ -97,17 +133,39 @@ struct KeyMappingView: View {
     }
 
     private func editorHeader(for game: AndroidApp) -> some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(game.name)
-                    .font(.largeTitle.weight(.black))
-                Text(game.packageName)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 16) {
+                editorTitle(for: game)
+
+                Spacer()
+
+                headerActions(for: game)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 12) {
+                editorTitle(for: game)
+                headerActions(for: game)
+            }
+        }
+    }
 
+    private func editorTitle(for game: AndroidApp) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(game.name)
+                .font(.largeTitle.weight(.black))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(game.packageName)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func headerActions(for game: AndroidApp) -> some View {
+        HStack(spacing: 10) {
             Button {
                 app.createDefaultProfile(for: game)
             } label: {
@@ -147,24 +205,13 @@ struct KeyMappingView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    HStack {
-                        Button {
-                            addGamepadSample(to: game)
-                        } label: {
-                            Label("Add Gamepad A", systemImage: "button.programmable")
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            profileButtons(for: game)
                         }
 
-                        Button {
-                            app.activateKeyMapping(for: game)
-                            openWindow(id: "key-mapping-overlay")
-                        } label: {
-                            Label("Open Overlay", systemImage: "rectangle.on.rectangle")
-                        }
-
-                        Button {
-                            app.saveKeyProfiles()
-                        } label: {
-                            Label("Save", systemImage: "square.and.arrow.down")
+                        VStack(alignment: .leading, spacing: 10) {
+                            profileButtons(for: game)
                         }
                     }
                 } else {
@@ -184,35 +231,46 @@ struct KeyMappingView: View {
         }
     }
 
+    private func profileButtons(for game: AndroidApp) -> some View {
+        Group {
+            Button {
+                addGamepadSample(to: game)
+            } label: {
+                Label("Add Gamepad A", systemImage: "button.programmable")
+            }
+
+            Button {
+                app.activateKeyMapping(for: game)
+                openWindow(id: "key-mapping-overlay")
+            } label: {
+                Label("Open Overlay", systemImage: "rectangle.on.rectangle")
+            }
+
+            Button {
+                app.saveKeyProfiles()
+            } label: {
+                Label("Save", systemImage: "square.and.arrow.down")
+            }
+        }
+    }
+
     private func mappingCanvas(for game: AndroidApp) -> some View {
         let profile = viewModel.profile(for: game, in: app.keyProfiles)
         let mappings = profile?.mappings ?? []
 
         return PanelView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Tap layout")
-                        .font(.title3.weight(.bold))
-
-                    Spacer()
-
-                    Picker("Type", selection: $newInputType) {
-                        ForEach(InputMappingType.allCases) { type in
-                            Text(type.rawValue).tag(type)
-                        }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        canvasTitle
+                        Spacer()
+                        newMappingControls
                     }
-                    .frame(width: 130)
 
-                    Picker("Action", selection: $newAction) {
-                        ForEach(InputMappingAction.allCases) { action in
-                            Text(action.rawValue).tag(action)
-                        }
+                    VStack(alignment: .leading, spacing: 12) {
+                        canvasTitle
+                        newMappingControls
                     }
-                    .frame(width: 150)
-
-                    TextField("Trigger", text: $newTrigger)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
                 }
 
                 ZStack {
@@ -264,20 +322,75 @@ struct KeyMappingView: View {
                 }
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
 
-                HStack {
-                    Button {
-                        addMapping(to: game, at: NormalizedPoint(x: 0.78, y: 0.72))
-                    } label: {
-                        Label("Add Control", systemImage: "plus")
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        Button {
+                            addMapping(to: game, at: NormalizedPoint(x: 0.78, y: 0.72))
+                        } label: {
+                            Label("Add Control", systemImage: "plus")
+                        }
+
+                        Button {
+                            app.saveKeyProfiles()
+                        } label: {
+                            Label("Save Profile", systemImage: "square.and.arrow.down")
+                        }
                     }
 
-                    Button {
-                        app.saveKeyProfiles()
-                    } label: {
-                        Label("Save Profile", systemImage: "square.and.arrow.down")
+                    VStack(alignment: .leading, spacing: 10) {
+                        Button {
+                            addMapping(to: game, at: NormalizedPoint(x: 0.78, y: 0.72))
+                        } label: {
+                            Label("Add Control", systemImage: "plus")
+                        }
+
+                        Button {
+                            app.saveKeyProfiles()
+                        } label: {
+                            Label("Save Profile", systemImage: "square.and.arrow.down")
+                        }
                     }
                 }
             }
+        }
+    }
+
+    private var canvasTitle: some View {
+        Text("Tap layout")
+            .font(.title3.weight(.bold))
+    }
+
+    private var newMappingControls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                newMappingFields
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                newMappingFields
+            }
+        }
+    }
+
+    private var newMappingFields: some View {
+        Group {
+            Picker("Type", selection: $newInputType) {
+                ForEach(InputMappingType.allCases) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .frame(width: 130)
+
+            Picker("Action", selection: $newAction) {
+                ForEach(InputMappingAction.allCases) { action in
+                    Text(action.rawValue).tag(action)
+                }
+            }
+            .frame(width: 145)
+
+            TextField("Trigger", text: $newTrigger)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 120)
         }
     }
 
@@ -492,54 +605,41 @@ private struct MappingEditorRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Toggle("", isOn: $mapping.isEnabled)
-                    .toggleStyle(.checkbox)
-                    .labelsHidden()
-
-                TextField("Trigger", text: $mapping.trigger)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 120)
-
-                Picker("Type", selection: $mapping.inputType) {
-                    ForEach(InputMappingType.allCases) { type in
-                        Text(type.rawValue).tag(type)
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    rowHeaderControls
                 }
-                .frame(width: 130)
 
-                Picker("Action", selection: $mapping.action) {
-                    ForEach(InputMappingAction.allCases) { action in
-                        Text(action.rawValue).tag(action)
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    rowHeaderControls
                 }
-                .frame(width: 150)
-
-                Button {
-                    onTest(mapping)
-                } label: {
-                    Image(systemName: "dot.scope")
-                }
-                .help("Send this mapping through ADB")
-
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
-                }
-                .help("Delete mapping")
             }
 
-            HStack(spacing: 14) {
-                pointSlider(title: "X", value: xBinding)
-                pointSlider(title: "Y", value: yBinding)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    pointSlider(title: "X", value: xBinding)
+                    pointSlider(title: "Y", value: yBinding)
+                    durationStepper
+                }
 
-                Stepper("Duration \(mapping.durationMilliseconds) ms", value: $mapping.durationMilliseconds, in: 50...5_000, step: 50)
-                    .frame(width: 210)
+                VStack(alignment: .leading, spacing: 10) {
+                    pointSlider(title: "X", value: xBinding)
+                    pointSlider(title: "Y", value: yBinding)
+                    durationStepper
+                }
             }
 
             if mapping.action == .swipe {
-                HStack(spacing: 14) {
-                    pointSlider(title: "End X", value: secondaryXBinding)
-                    pointSlider(title: "End Y", value: secondaryYBinding)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 14) {
+                        pointSlider(title: "End X", value: secondaryXBinding)
+                        pointSlider(title: "End Y", value: secondaryYBinding)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        pointSlider(title: "End X", value: secondaryXBinding)
+                        pointSlider(title: "End Y", value: secondaryYBinding)
+                    }
                 }
             }
 
@@ -552,6 +652,49 @@ private struct MappingEditorRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
+    }
+
+    private var rowHeaderControls: some View {
+        Group {
+            Toggle("", isOn: $mapping.isEnabled)
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+
+            TextField("Trigger", text: $mapping.trigger)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 120)
+
+            Picker("Type", selection: $mapping.inputType) {
+                ForEach(InputMappingType.allCases) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .frame(width: 130)
+
+            Picker("Action", selection: $mapping.action) {
+                ForEach(InputMappingAction.allCases) { action in
+                    Text(action.rawValue).tag(action)
+                }
+            }
+            .frame(width: 145)
+
+            Button {
+                onTest(mapping)
+            } label: {
+                Image(systemName: "dot.scope")
+            }
+            .help("Send this mapping through ADB")
+
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+            }
+            .help("Delete mapping")
+        }
+    }
+
+    private var durationStepper: some View {
+        Stepper("Duration \(mapping.durationMilliseconds) ms", value: $mapping.durationMilliseconds, in: 50...5_000, step: 50)
+            .frame(width: 210)
     }
 
     private var xBinding: Binding<Double> {
@@ -596,7 +739,7 @@ private struct MappingEditorRow: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             Slider(value: value, in: 0...1)
-                .frame(width: 120)
+                .frame(minWidth: 90, maxWidth: 140)
             Text("\(Int(value.wrappedValue * 100))%")
                 .font(.caption.monospacedDigit())
                 .frame(width: 38, alignment: .trailing)

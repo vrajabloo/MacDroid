@@ -17,7 +17,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 header
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 18) {
+                LazyVGrid(columns: adaptiveColumns, spacing: 18) {
                     sdkPanel
                     performancePanel
                     displayPanel
@@ -27,6 +27,8 @@ struct SettingsView: View {
                 }
             }
             .padding(28)
+            .frame(maxWidth: 1080, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .onChange(of: app.settings) { _, _ in
             viewModel.markChanged()
@@ -288,5 +290,9 @@ struct SettingsView: View {
             app.saveSettings()
             Task { await app.refreshAll() }
         }
+    }
+
+    private var adaptiveColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 340, maximum: 520), spacing: 18, alignment: .top)]
     }
 }

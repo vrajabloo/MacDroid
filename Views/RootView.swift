@@ -14,7 +14,7 @@ struct RootView: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(selectedSection: $selectedSection)
-                .frame(width: 268)
+                .frame(width: 236)
 
             Divider()
                 .opacity(0.35)
@@ -39,7 +39,7 @@ struct RootView: View {
                     LogsView()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         }
         .task {
             await app.bootstrap()

@@ -22,93 +22,139 @@ struct HomeDashboardView: View {
                 hero
                 metrics
 
-                HStack(alignment: .top, spacing: 18) {
+                LazyVGrid(columns: adaptiveColumns(minimum: 360), spacing: 18) {
                     recentGamesPanel
                     devicePanel
                 }
 
-                HStack(alignment: .top, spacing: 18) {
+                LazyVGrid(columns: adaptiveColumns(minimum: 360), spacing: 18) {
                     avdPanel
                     APKDropZone()
                 }
             }
             .padding(28)
+            .frame(maxWidth: 1180, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
     private var hero: some View {
         PanelView(padding: 24) {
-            HStack(alignment: .center, spacing: 26) {
-                VStack(alignment: .leading, spacing: 14) {
-                    StatusBadge(title: app.emulatorState.title, color: app.emulatorState.color)
-
-                    Text("MacDroid")
-                        .font(.system(size: 42, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-
-                    Text("A gaming-focused macOS wrapper around the official Google Android Emulator.")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 12) {
-                        Button {
-                            Task { await primaryAction() }
-                        } label: {
-                            Label(viewModel.primaryActionTitle(for: app.emulatorState), systemImage: "play.fill")
-                                .font(.title3.weight(.bold))
-                                .frame(minWidth: 190, minHeight: 54)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color(hex: 0x1EEA8A))
-                        .disabled(app.isBusy || app.emulatorState == .booting)
-
-                        Button {
-                            Task { await app.stopEmulator() }
-                        } label: {
-                            Label("Stop", systemImage: "stop.fill")
-                                .frame(minHeight: 42)
-                        }
-                        .disabled(app.emulatorState == .stopped || app.isBusy)
-
-                        Button {
-                            Task { await app.refreshAll() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                                .frame(width: 34, height: 34)
-                        }
-                        .help("Refresh SDK, emulator, and game library")
-
-                        Button {
-                            openWindow(id: "emulator-controls")
-                        } label: {
-                            Label("Controls", systemImage: "rectangle.on.rectangle.circle")
-                                .frame(minHeight: 42)
-                        }
-                        .help("Open the single MacDroid emulator controls toolbar")
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 26) {
+                    heroCopy
+                    Spacer(minLength: 18)
+                    heroProfile
                 }
 
-                VStack(spacing: 16) {
-                    emulatorLaunchIcon
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "cpu.fill")
-                                .foregroundStyle(Color(hex: 0x1EEA8A))
-                            Text("Gaming profile")
-                                .font(.headline)
-                        }
-
-                        settingLine("RAM", app.settings.ramPreset.rawValue)
-                        settingLine("CPU", app.settings.cpuPreset.rawValue)
-                        settingLine("Resolution", app.settings.resolutionPreset.rawValue)
-                        settingLine("DPI", app.settings.dpiPreset.rawValue)
-                        settingLine("Target", app.settings.fpsTarget.rawValue)
-                    }
-                    .frame(width: 260)
+                VStack(alignment: .leading, spacing: 22) {
+                    heroCopy
+                    heroProfile
                 }
             }
+        }
+    }
+
+    private var heroCopy: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            StatusBadge(title: app.emulatorState.title, color: app.emulatorState.color)
+
+            Text("MacDroid")
+                .font(.system(size: 42, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text("A gaming-focused macOS wrapper around the official Google Android Emulator.")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            actionButtons
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var actionButtons: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                primaryButton
+                stopButton
+                refreshButton
+                controlsButton
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                primaryButton
+                HStack(spacing: 10) {
+                    stopButton
+                    refreshButton
+                    controlsButton
+                }
+            }
+        }
+    }
+
+    private var primaryButton: some View {
+        Button {
+            Task { await primaryAction() }
+        } label: {
+            Label(viewModel.primaryActionTitle(for: app.emulatorState), systemImage: "play.fill")
+                .font(.title3.weight(.bold))
+                .frame(minWidth: 190, minHeight: 54)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(Color(hex: 0x1EEA8A))
+        .disabled(app.isBusy || app.emulatorState == .booting)
+    }
+
+    private var stopButton: some View {
+        Button {
+            Task { await app.stopEmulator() }
+        } label: {
+            Label("Stop", systemImage: "stop.fill")
+                .frame(minHeight: 42)
+        }
+        .disabled(app.emulatorState == .stopped || app.isBusy)
+    }
+
+    private var refreshButton: some View {
+        Button {
+            Task { await app.refreshAll() }
+        } label: {
+            Image(systemName: "arrow.clockwise")
+                .frame(width: 34, height: 34)
+        }
+        .help("Refresh SDK, emulator, and game library")
+    }
+
+    private var controlsButton: some View {
+        Button {
+            openWindow(id: "emulator-controls")
+        } label: {
+            Label("Controls", systemImage: "rectangle.on.rectangle.circle")
+                .frame(minHeight: 42)
+        }
+        .help("Open the single MacDroid emulator controls toolbar")
+    }
+
+    private var heroProfile: some View {
+        VStack(spacing: 16) {
+            emulatorLaunchIcon
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "cpu.fill")
+                        .foregroundStyle(Color(hex: 0x1EEA8A))
+                    Text("Gaming profile")
+                        .font(.headline)
+                }
+
+                settingLine("RAM", app.settings.ramPreset.rawValue)
+                settingLine("CPU", app.settings.cpuPreset.rawValue)
+                settingLine("Resolution", app.settings.resolutionPreset.rawValue)
+                settingLine("DPI", app.settings.dpiPreset.rawValue)
+                settingLine("Target", app.settings.fpsTarget.rawValue)
+            }
+            .frame(width: 260)
         }
     }
 
@@ -150,7 +196,7 @@ struct HomeDashboardView: View {
     }
 
     private var metrics: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 4), spacing: 14) {
+        LazyVGrid(columns: adaptiveColumns(minimum: 190), spacing: 14) {
             MetricCard(title: "Installed apps", value: "\(app.games.count)", systemImage: "square.grid.2x2.fill", color: Color(hex: 0x1EEA8A))
             MetricCard(title: "Available AVDs", value: "\(app.avds.count)", systemImage: "iphone.gen3", color: Color(hex: 0x00C2FF))
             MetricCard(title: "ADB", value: app.sdkInfo.hasADB ? "Ready" : "Missing", systemImage: "terminal.fill", color: app.sdkInfo.hasADB ? Color(hex: 0x1EEA8A) : Color(hex: 0xFFD166))
@@ -256,7 +302,6 @@ struct HomeDashboardView: View {
                 }
             }
         }
-        .frame(width: 390)
     }
 
     private var avdPanel: some View {
@@ -344,5 +389,9 @@ struct HomeDashboardView: View {
                 .lineLimit(1)
         }
         .font(.caption)
+    }
+
+    private func adaptiveColumns(minimum: CGFloat) -> [GridItem] {
+        [GridItem(.adaptive(minimum: minimum, maximum: 580), spacing: 18, alignment: .top)]
     }
 }
