@@ -39,12 +39,14 @@ struct SidebarView: View {
             .padding(.top, 12)
             .padding(.horizontal, 14)
 
-            List(AppSection.allCases, selection: $selectedSection) { section in
-                Label(section.rawValue, systemImage: section.systemImage)
-                    .tag(Optional(section))
-                    .padding(.vertical, 4)
+            VStack(spacing: 6) {
+                ForEach(AppSection.allCases) { section in
+                    sidebarButton(for: section)
+                }
             }
-            .listStyle(.sidebar)
+            .padding(.horizontal, 12)
+
+            Spacer(minLength: 16)
 
             VStack(alignment: .leading, spacing: 10) {
                 StatusBadge(title: app.emulatorState.title, color: app.emulatorState.color)
@@ -62,6 +64,40 @@ struct SidebarView: View {
             }
             .padding(14)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(VisualEffectBackground(material: .sidebar, blendingMode: .behindWindow))
+    }
+
+    private func sidebarButton(for section: AppSection) -> some View {
+        let isSelected = selectedSection == section
+
+        return Button {
+            selectedSection = section
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: section.systemImage)
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 20)
+
+                Text(section.rawValue)
+                    .font(.callout.weight(isSelected ? .semibold : .regular))
+
+                Spacer()
+            }
+            .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.68))
+            .padding(.horizontal, 10)
+            .frame(height: 36)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.white.opacity(0.13) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color(hex: 0x1EEA8A, opacity: 0.32) : Color.clear, lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .help("Open \(section.rawValue)")
     }
 }

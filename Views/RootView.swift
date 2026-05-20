@@ -2,8 +2,8 @@
 // RootView.swift
 // MacDroid
 //
-// Hosts the macOS NavigationSplitView shell. The detail area changes based on the
-// selected sidebar section.
+// Hosts the main app shell. The sidebar uses explicit buttons so navigation
+// stays predictable even when macOS NavigationSplitView styling changes.
 
 import SwiftUI
 
@@ -12,10 +12,13 @@ struct RootView: View {
     @State private var selectedSection: AppSection? = .home
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             SidebarView(selectedSection: $selectedSection)
-                .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
-        } detail: {
+                .frame(width: 268)
+
+            Divider()
+                .opacity(0.35)
+
             ZStack {
                 AppBackgroundView()
 
@@ -36,6 +39,7 @@ struct RootView: View {
                     LogsView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .task {
             await app.bootstrap()
