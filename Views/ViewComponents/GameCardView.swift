@@ -1,6 +1,6 @@
 //
 // GameCardView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Artwork-style card for an installed Android app. Real app icons can be wired
 // into AndroidApp.iconData in a later metadata pass.

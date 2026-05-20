@@ -1,6 +1,6 @@
 //
 // Color+Hex.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Tiny helper for readable design colors. The app uses a dark graphite palette
 // with a neon Android accent.

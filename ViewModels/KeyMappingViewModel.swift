@@ -1,6 +1,6 @@
 //
 // KeyMappingViewModel.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Handles lightweight editor state for key mapping profiles. The MVP edits data;
 // future input injection can plug into the same profile model.

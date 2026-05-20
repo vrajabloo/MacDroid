@@ -1,6 +1,6 @@
 //
 // EmulatorState.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // A simple state enum for the emulator lifecycle. The UI uses this to show
 // beginner-friendly status text instead of raw command-line output.

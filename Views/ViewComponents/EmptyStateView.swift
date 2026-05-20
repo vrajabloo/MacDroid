@@ -1,6 +1,6 @@
 //
 // EmptyStateView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Shared empty state used when the emulator has not returned games or logs yet.
 

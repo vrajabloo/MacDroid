@@ -1,6 +1,6 @@
 //
 // SettingsViewModel.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Tracks whether settings have unsaved changes. The saved values are Codable and
 // can later be expanded without changing the UI flow.

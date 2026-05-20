@@ -1,6 +1,6 @@
 //
 // ShellCommandRunner.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Runs Android SDK tools with Foundation's Process API. All higher-level
 // services explain a command to LogService before calling this runner.

@@ -1,6 +1,6 @@
 //
 // AndroidDeviceInfo.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Friendly details about the currently connected emulator. These values come
 // from ADB properties and help users understand what Android device is running.

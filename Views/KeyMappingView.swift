@@ -1,6 +1,6 @@
 //
 // KeyMappingView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // MVP key mapping editor. It saves per-game profiles and normalized tap points;
 // actual input injection is intentionally isolated for a future implementation.

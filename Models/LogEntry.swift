@@ -1,6 +1,6 @@
 //
 // LogEntry.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // A readable log item used by the troubleshooting screen. Logs explain what the
 // app is doing before it runs Android SDK commands, which helps beginner users.

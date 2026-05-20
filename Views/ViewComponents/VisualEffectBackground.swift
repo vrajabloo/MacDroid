@@ -1,6 +1,6 @@
 //
 // VisualEffectBackground.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // A small AppKit bridge that gives the sidebar and panels a native macOS material.
 

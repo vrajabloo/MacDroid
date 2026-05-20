@@ -5,17 +5,17 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>CleanDroid Gaming</string>
+    <string>MacDroid</string>
     <key>CFBundleExecutable</key>
-    <string>CleanDroidGaming</string>
+    <string>MacDroid</string>
     <key>CFBundleIdentifier</key>
-    <string>com.cleandroid.gaming</string>
+    <string>com.macdroid.gaming</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>CleanDroid Gaming</string>
+    <string>MacDroid</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

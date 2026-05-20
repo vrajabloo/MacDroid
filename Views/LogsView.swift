@@ -1,6 +1,6 @@
 //
 // LogsView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Troubleshooting screen for command logs, startup errors, ADB output, and APK
 // install failures. Messages are written for beginners, with raw commands shown.

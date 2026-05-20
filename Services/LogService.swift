@@ -1,6 +1,6 @@
 //
 // LogService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Keeps a user-friendly activity log for the Logs screen. Services write an
 // explanation before each Android SDK command so users can learn what is going on.

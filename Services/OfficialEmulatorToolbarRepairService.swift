@@ -1,10 +1,10 @@
 //
 // OfficialEmulatorToolbarRepairService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Keeps Google's official Android Emulator toolbar visible, but makes its most
 // useful buttons reliable. The service places tiny transparent macOS panels over
-// the toolbar buttons and routes those clicks through CleanDroid's ADB controls.
+// the toolbar buttons and routes those clicks through MacDroid's ADB controls.
 
 import AppKit
 
@@ -84,7 +84,7 @@ final class OfficialEmulatorToolbarRepairService {
 
     private func makePanel(for action: EmulatorControlAction) -> ToolbarClickPanel {
         let panel = ToolbarClickPanel(action: action) { [weak self] selectedAction in
-            self?.logService.log("Official toolbar \(selectedAction.title) click captured by CleanDroid.", level: .info)
+            self?.logService.log("Official toolbar \(selectedAction.title) click captured by MacDroid.", level: .info)
             self?.clickHandler?(selectedAction)
         }
 

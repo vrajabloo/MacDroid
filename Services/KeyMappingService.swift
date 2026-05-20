@@ -1,6 +1,6 @@
 //
 // KeyMappingService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Saves and loads per-game input mapping profiles. The MVP stores the design and
 // data now; future builds can execute mappings through ADB input or overlays.

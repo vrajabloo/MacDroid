@@ -1,6 +1,6 @@
 //
 // LogsViewModel.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Adds search and severity filtering to the raw LogService entries.
 

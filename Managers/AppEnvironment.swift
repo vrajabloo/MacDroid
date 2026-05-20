@@ -1,6 +1,6 @@
 //
 // AppEnvironment.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // The central coordinator for the app. It owns services, exposes app-wide state,
 // and gives SwiftUI views simple async actions such as Start Emulator or Install APK.
@@ -65,7 +65,7 @@ final class AppEnvironment: ObservableObject {
         self.keyProfiles = keyMappingService.loadProfiles()
         self.selectedAVDName = avdManagerService.recommendedAVDName
 
-        logService.log("CleanDroid Gaming opened. This app wraps the official Google Android Emulator.", level: .info)
+        logService.log("MacDroid opened. This app wraps the official Google Android Emulator.", level: .info)
     }
 
     func bootstrap() async {
@@ -107,6 +107,15 @@ final class AppEnvironment: ObservableObject {
 
             if avds.contains(where: { $0.name == avdManagerService.recommendedAVDName }) {
                 selectedAVDName = avdManagerService.recommendedAVDName
+            } else if selectedAVDName == avdManagerService.recommendedAVDName,
+                      let legacyAVD = avds.first(where: { avdManagerService.legacyRecommendedAVDNames.contains($0.name) }) {
+                // Existing users may still have the old AVD. Selecting it preserves installed games after the rename.
+                selectedAVDName = legacyAVD.name
+                logService.log("Using existing \(legacyAVD.name) AVD until a new MacDroid AVD is created.", level: .info)
+            } else if !selectedAVDName.isEmpty,
+                      !avds.contains(where: { $0.name == selectedAVDName }),
+                      let firstAVD = avds.first {
+                selectedAVDName = firstAVD.name
             } else if selectedAVDName.isEmpty, let firstAVD = avds.first {
                 selectedAVDName = firstAVD.name
             }
@@ -154,7 +163,7 @@ final class AppEnvironment: ObservableObject {
     }
 
     func launchFromEmulatorIcon() async {
-        logService.log("Emulator icon clicked. CleanDroid will open the gaming emulator experience.", level: .info)
+        logService.log("Emulator icon clicked. MacDroid will open the gaming emulator experience.", level: .info)
 
         switch emulatorState {
         case .running:
@@ -165,7 +174,7 @@ final class AppEnvironment: ObservableObject {
             await ensureRecommendedAVDIfNeeded()
             let avdName = selectedAVDName.isEmpty ? avdManagerService.recommendedAVDName : selectedAVDName
             guard avdExists(named: avdName) else {
-                logService.log("CleanDroid could not find a launchable AVD yet. Create the gaming AVD from Home or Settings, then click the emulator icon again.", level: .warning)
+                logService.log("MacDroid could not find a launchable AVD yet. Create the gaming AVD from Home or Settings, then click the emulator icon again.", level: .warning)
                 return
             }
             await startEmulator()
@@ -709,7 +718,7 @@ final class AppEnvironment: ObservableObject {
             return
         }
 
-        logService.log("No launchable AVD was found, so CleanDroid will create the recommended gaming AVD before starting.", level: .info)
+        logService.log("No launchable AVD was found, so MacDroid will create the recommended gaming AVD before starting.", level: .info)
         await createRecommendedAVD()
     }
 

@@ -1,6 +1,6 @@
 //
 // FileStorage.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Small Codable helper. Services use this to save settings, game library
 // metadata, and key mapping profiles as beginner-readable JSON files.
@@ -14,18 +14,18 @@ enum FileStorage {
         }
 
         let data = try Data(contentsOf: url)
-        return try JSONDecoder.cleanDroid.decode(type, from: data)
+        return try JSONDecoder.macDroid.decode(type, from: data)
     }
 
     static func save<T: Encodable>(_ value: T, to url: URL) throws {
         try AppPaths.ensureApplicationSupportDirectory()
-        let data = try JSONEncoder.cleanDroid.encode(value)
+        let data = try JSONEncoder.macDroid.encode(value)
         try data.write(to: url, options: [.atomic])
     }
 }
 
 extension JSONEncoder {
-    static var cleanDroid: JSONEncoder {
+    static var macDroid: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -34,7 +34,7 @@ extension JSONEncoder {
 }
 
 extension JSONDecoder {
-    static var cleanDroid: JSONDecoder {
+    static var macDroid: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder

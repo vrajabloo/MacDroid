@@ -1,6 +1,6 @@
 //
 // AndroidApp.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // A small model that represents an Android app or game discovered through ADB.
 // The MVP uses package names from `adb shell pm list packages -3`; later versions

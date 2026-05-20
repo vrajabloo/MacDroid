@@ -1,6 +1,6 @@
 //
 // GamingSettings.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Stores user-facing performance preferences. Some settings are written into an
 // AVD config file, while others are launch preferences the app can apply later.

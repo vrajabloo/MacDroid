@@ -1,8 +1,8 @@
 //
 // FloatingWindowConfigurator.swift
-// CleanDroid Gaming
+// MacDroid
 //
-// Makes the CleanDroid emulator controls window float above normal windows.
+// Makes the MacDroid emulator controls window float above normal windows.
 // This lets it behave like a practical replacement for the official emulator
 // side toolbar when that toolbar does not respond to clicks.
 

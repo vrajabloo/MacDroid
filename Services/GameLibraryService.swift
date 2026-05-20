@@ -1,6 +1,6 @@
 //
 // GameLibraryService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Maintains the game library shown in the UI. Live app data comes from ADB, and
 // local JSON preserves friendly metadata such as last-played timestamps.

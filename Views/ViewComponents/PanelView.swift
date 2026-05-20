@@ -1,6 +1,6 @@
 //
 // PanelView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Reusable polished panel. Cards are used for individual tools and repeated
 // items, while page sections remain spacious and unframed.

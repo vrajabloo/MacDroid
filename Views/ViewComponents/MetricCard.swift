@@ -1,6 +1,6 @@
 //
 // MetricCard.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Small dashboard metric card for installed games, AVDs, and SDK readiness.
 

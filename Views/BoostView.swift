@@ -1,6 +1,6 @@
 //
 // BoostView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Beginner-friendly repair center for the problems users hit most often:
 // slow Play Store downloads, stale ADB state, boot issues, and network latency.

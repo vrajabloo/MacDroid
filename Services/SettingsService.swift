@@ -1,6 +1,6 @@
 //
 // SettingsService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Loads and saves gaming performance settings using Codable JSON. This keeps the
 // preferences easy to inspect while the app is still in MVP form.

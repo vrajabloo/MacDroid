@@ -1,6 +1,6 @@
 # Future Features
 
-CleanDroid Gaming already has the foundation for a commercial-emulator-style Android gaming control center. The next features should build on the existing service boundaries instead of replacing the official Google Emulator.
+MacDroid already has the foundation for a commercial-emulator-style Android gaming control center. The next features should build on the existing service boundaries instead of replacing the official Google Emulator.
 
 ## Input & Controls
 
@@ -57,7 +57,7 @@ CleanDroid Gaming already has the foundation for a commercial-emulator-style And
 ## Cloud & Sync
 
 - Cloud save backup helpers where games expose files.
-- Export/import CleanDroid settings.
+- Export/import MacDroid settings.
 - Export/import game library metadata.
 - Sync key mapping profiles across Macs.
 

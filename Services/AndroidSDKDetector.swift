@@ -1,6 +1,6 @@
 //
 // AndroidSDKDetector.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Finds the official Android SDK tools on the Mac. This app is intentionally a
 // wrapper around Google's Android Emulator rather than a custom emulator engine.

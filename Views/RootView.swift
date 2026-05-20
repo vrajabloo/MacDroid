@@ -1,6 +1,6 @@
 //
 // RootView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Hosts the macOS NavigationSplitView shell. The detail area changes based on the
 // selected sidebar section.

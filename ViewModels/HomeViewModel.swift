@@ -1,6 +1,6 @@
 //
 // HomeViewModel.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Presentation helpers for the home dashboard. Keeping these values here keeps
 // the SwiftUI view focused on layout instead of app-state decisions.

@@ -1,8 +1,8 @@
 //
 // EmulatorControlAction.swift
-// CleanDroid Gaming
+// MacDroid
 //
-// Actions shown in CleanDroid's replacement emulator toolbar. These mirror the
+// Actions shown in MacDroid's replacement emulator toolbar. These mirror the
 // common Google Emulator side buttons, but run through ADB so they keep working
 // even if the official emulator toolbar ignores clicks.
 

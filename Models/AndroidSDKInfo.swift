@@ -1,8 +1,8 @@
 //
 // AndroidSDKInfo.swift
-// CleanDroid Gaming
+// MacDroid
 //
-// Stores the local Android SDK paths that CleanDroid Gaming needs in order to
+// Stores the local Android SDK paths that MacDroid needs in order to
 // talk to the official Google Android Emulator, ADB, SDK Manager, and AVD tools.
 
 import Foundation

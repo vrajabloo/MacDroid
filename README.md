@@ -1,8 +1,8 @@
-# CleanDroid Gaming
+# MacDroid
 
 Native SwiftUI macOS launcher for Android games on Apple Silicon.
 
-CleanDroid Gaming is **not** a custom emulator engine. It is a polished gaming wrapper around the official Google Android Emulator, Android SDK, ADB, and AVD tools.
+MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper around the official Google Android Emulator, Android SDK, ADB, and AVD tools.
 
 ## Highlights
 
@@ -31,7 +31,7 @@ swift build
 Then open:
 
 ```text
-Build/CleanDroid Gaming.app
+Build/MacDroid.app
 ```
 
 ## Requirements
@@ -63,7 +63,7 @@ Packaging/        macOS app bundle scripts
 
 ## Important
 
-CleanDroid Gaming launches and controls the official Google Android Emulator. It does not bundle Android images, redistribute Play Store, patch Google's emulator binary, or replace the emulator runtime.
+MacDroid launches and controls the official Google Android Emulator. It does not bundle Android images, redistribute Play Store, patch Google's emulator binary, or replace the emulator runtime.
 
 ## Docs
 

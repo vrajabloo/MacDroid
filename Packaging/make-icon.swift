@@ -1,6 +1,6 @@
 //
 // make-icon.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Generates a simple premium app icon for the local macOS bundle. This keeps the
 // project self-contained without needing a designer-provided .icns file yet.

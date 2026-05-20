@@ -1,8 +1,8 @@
 //
 // AndroidNavigationKey.swift
-// CleanDroid Gaming
+// MacDroid
 //
-// Android navigation keys that CleanDroid can send through ADB. These mirror the
+// Android navigation keys that MacDroid can send through ADB. These mirror the
 // standard emulator controls users expect from commercial Android emulators.
 
 import Foundation

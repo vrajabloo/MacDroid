@@ -1,6 +1,6 @@
 //
 // AVDManagerService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Handles Android Virtual Device discovery and creation. The recommended device
 // uses an ARM64 Google Play image for Apple Silicon Macs whenever it is available.
@@ -9,7 +9,8 @@ import Foundation
 
 @MainActor
 final class AVDManagerService {
-    let recommendedAVDName = "CleanDroid_Gaming"
+    let recommendedAVDName = "MacDroid"
+    let legacyRecommendedAVDNames = ["CleanDroid_Gaming"]
     let recommendedSystemImage = "system-images;android-35;google_apis_playstore;arm64-v8a"
 
     private let logService: LogService
@@ -68,7 +69,7 @@ final class AVDManagerService {
         }
 
         logService.log(
-            "Creating the CleanDroid Gaming AVD. The answer 'no' keeps the standard hardware profile.",
+            "Creating the MacDroid AVD. The answer 'no' keeps the standard hardware profile.",
             level: .command,
             command: "avdmanager create avd --force --name \(recommendedAVDName) --package \(recommendedSystemImage) --device pixel_7"
         )
@@ -165,7 +166,7 @@ final class AVDManagerService {
                     path: current["Path"] ?? "",
                     target: current["Target"] ?? "Unknown target",
                     basedOn: current["Based on"] ?? "",
-                    isRecommended: name == recommendedAVDName
+                    isRecommended: name == recommendedAVDName || legacyRecommendedAVDNames.contains(name)
                 )
             )
         }

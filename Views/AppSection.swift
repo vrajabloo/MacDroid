@@ -1,6 +1,6 @@
 //
 // AppSection.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Defines the sidebar destinations. Each section maps to one main SwiftUI screen.
 

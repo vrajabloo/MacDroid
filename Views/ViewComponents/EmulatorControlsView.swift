@@ -1,8 +1,8 @@
 //
 // EmulatorControlsView.swift
-// CleanDroid Gaming
+// MacDroid
 //
-// CleanDroid's own emulator toolbar. It is a practical replacement for the
+// MacDroid's own emulator toolbar. It is a practical replacement for the
 // official Google Emulator side toolbar when that toolbar ignores mouse clicks.
 
 import SwiftUI

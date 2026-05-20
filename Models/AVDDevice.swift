@@ -1,9 +1,9 @@
 //
 // AVDDevice.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Represents an Android Virtual Device returned by `avdmanager list avd`.
-// CleanDroid Gaming starts and configures these official Google Emulator devices.
+// MacDroid starts and configures these official Google Emulator devices.
 
 import Foundation
 

@@ -1,6 +1,6 @@
 //
 // AppBackgroundView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Dark graphite background with restrained neon accents. The goal is premium and
 // game-ready without becoming cartoonish.

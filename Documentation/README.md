@@ -1,6 +1,6 @@
-# CleanDroid Gaming Documentation
+# MacDroid Documentation
 
-CleanDroid Gaming is a native SwiftUI macOS app for Apple Silicon Macs. It provides a premium gaming launcher and manager around the official Google Android Emulator, Android SDK, ADB, and AVD tools.
+MacDroid is a native SwiftUI macOS app for Apple Silicon Macs. It provides a premium gaming launcher and manager around the official Google Android Emulator, Android SDK, ADB, and AVD tools.
 
 It does not emulate Android by itself. The Android runtime, virtualization, system images, Play Store support, and device behavior all come from Google's official emulator stack.
 
@@ -113,7 +113,7 @@ Logs show user-friendly explanations and the command behind each SDK operation. 
 
 ## Command Strategy
 
-CleanDroid runs official Android tools through `Process`.
+MacDroid runs official Android tools through `Process`.
 
 Examples:
 
@@ -202,7 +202,7 @@ Sends manual ADB tap tests from saved normalized tap coordinates.
 
 ### OfficialEmulatorToolbarRepairService
 
-Keeps the official Google Emulator toolbar visible, but repairs common button clicks with transparent macOS helper panels that route actions through CleanDroid's ADB control layer.
+Keeps the official Google Emulator toolbar visible, but repairs common button clicks with transparent macOS helper panels that route actions through MacDroid's ADB control layer.
 
 ### LogService
 
@@ -214,10 +214,10 @@ Saves `GamingSettings` as local JSON.
 
 ## Stored Data
 
-CleanDroid stores local app data in:
+MacDroid stores local app data in:
 
 ```text
-~/Library/Application Support/CleanDroid Gaming/
+~/Library/Application Support/MacDroid/
 ```
 
 Files include:
@@ -244,7 +244,7 @@ swift build
 3. Open:
 
 ```text
-Build/CleanDroid Gaming.app
+Build/MacDroid.app
 ```
 
 4. Use Logs to verify commands.
@@ -277,7 +277,7 @@ Keep:
 - Settings > Keep official Google Emulator toolbar visible
 - Settings > Repair official toolbar buttons
 
-CleanDroid's transparent repair layer should route Back, Home, Recents, and other common buttons through ADB.
+MacDroid's transparent repair layer should route Back, Home, Recents, and other common buttons through ADB.
 
 ### No Play Store
 

@@ -1,10 +1,10 @@
 # Limitations
 
-CleanDroid Gaming is intentionally designed as a wrapper around the official Google Android Emulator. This keeps the project practical, maintainable, and aligned with Google's supported Android tooling.
+MacDroid is intentionally designed as a wrapper around the official Google Android Emulator. This keeps the project practical, maintainable, and aligned with Google's supported Android tooling.
 
-## What CleanDroid Is Not
+## What MacDroid Is Not
 
-CleanDroid is not:
+MacDroid is not:
 
 - a custom Android emulator engine
 - a custom hypervisor
@@ -17,7 +17,7 @@ The app launches and controls the official emulator. All Android execution comes
 
 ## System Images
 
-CleanDroid does not bundle Android system images. Users need Android SDK system images installed through Android Studio or `sdkmanager`.
+MacDroid does not bundle Android system images. Users need Android SDK system images installed through Android Studio or `sdkmanager`.
 
 For Play Store support, use a Google Play ARM64 image:
 
@@ -29,7 +29,7 @@ If the selected AVD uses a plain Google APIs or AOSP image, Play Store will not 
 
 ## Play Store
 
-CleanDroid can launch Play Store and reset Play Store state, but it cannot:
+MacDroid can launch Play Store and reset Play Store state, but it cannot:
 
 - redistribute Play Store
 - bypass Google account requirements
@@ -60,7 +60,7 @@ It cannot fix:
 
 ## FPS Control
 
-CleanDroid stores FPS preferences and uses performance-oriented emulator settings. Exact FPS behavior still depends on:
+MacDroid stores FPS preferences and uses performance-oriented emulator settings. Exact FPS behavior still depends on:
 
 - Android Emulator version
 - system image
@@ -92,9 +92,9 @@ Possible future approaches:
 
 ## Official Emulator Toolbar
 
-CleanDroid does not patch Google's Emulator binary. The official toolbar stays visible by default.
+MacDroid does not patch Google's Emulator binary. The official toolbar stays visible by default.
 
-If Google's toolbar ignores clicks on a specific macOS setup, CleanDroid places transparent helper panels over common toolbar buttons and sends the matching ADB command.
+If Google's toolbar ignores clicks on a specific macOS setup, MacDroid places transparent helper panels over common toolbar buttons and sends the matching ADB command.
 
 This repairs common actions while keeping the familiar Google toolbar UI.
 

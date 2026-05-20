@@ -1,6 +1,6 @@
 //
 // HomeDashboardView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Main landing dashboard. It shows the emulator state, the large Play action,
 // recent games, SDK readiness, and quick setup controls.
@@ -42,7 +42,7 @@ struct HomeDashboardView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     StatusBadge(title: app.emulatorState.title, color: app.emulatorState.color)
 
-                    Text("CleanDroid Gaming")
+                    Text("MacDroid")
                         .font(.system(size: 42, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
 
@@ -85,7 +85,7 @@ struct HomeDashboardView: View {
                             Label("Controls", systemImage: "rectangle.on.rectangle.circle")
                                 .frame(minHeight: 42)
                         }
-                        .help("Open the single CleanDroid emulator controls toolbar")
+                        .help("Open the single MacDroid emulator controls toolbar")
                     }
                 }
 
@@ -271,7 +271,7 @@ struct HomeDashboardView: View {
 
                 Picker("Selected AVD", selection: $app.selectedAVDName) {
                     if app.avds.isEmpty {
-                        Text("CleanDroid_Gaming").tag(app.avdManagerService.recommendedAVDName)
+                        Text("MacDroid").tag(app.avdManagerService.recommendedAVDName)
                     } else {
                         ForEach(app.avds) { avd in
                             Text(avd.name).tag(avd.name)

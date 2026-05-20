@@ -1,6 +1,6 @@
 //
 // LibraryViewModel.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Stores library screen UI state such as search text. The actual Android app
 // data remains in AppEnvironment so every screen sees the same source of truth.

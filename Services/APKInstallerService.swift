@@ -1,6 +1,6 @@
 //
 // APKInstallerService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Installs APK files into the running emulator with `adb install -r`. Drag and
 // drop and browse actions both call this service.

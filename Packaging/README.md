@@ -9,8 +9,8 @@ Run this script to create a clickable macOS app bundle:
 The output is:
 
 ```text
-Build/CleanDroid Gaming.app
+Build/MacDroid.app
 ```
 
-Double-click that app bundle in Finder. By default, CleanDroid Gaming starts the selected emulator automatically after detecting the Android SDK tools.
+Double-click that app bundle in Finder. By default, MacDroid starts the selected emulator automatically after detecting the Android SDK tools.
 

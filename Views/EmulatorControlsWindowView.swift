@@ -1,6 +1,6 @@
 //
 // EmulatorControlsWindowView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // A small standalone controls window. Users can keep this next to the official
 // Android Emulator window when the emulator's own side toolbar is unreliable.

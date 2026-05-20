@@ -1,6 +1,6 @@
 //
 // APKDropZone.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Drag-and-drop installer target. It accepts file URLs and forwards .apk paths to
 // the APKInstallerService through AppEnvironment.
@@ -21,7 +21,7 @@ struct APKDropZone: View {
             Text("Drop APK to install")
                 .font(.title3.weight(.bold))
 
-            Text("CleanDroid will run adb install -r against the active emulator.")
+            Text("MacDroid will run adb install -r against the active emulator.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

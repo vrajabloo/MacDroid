@@ -1,6 +1,6 @@
 //
 // AppPaths.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Centralizes local folders used by the app. Keeping paths in one place makes it
 // easier for beginner developers to understand where settings and profiles live.
@@ -9,12 +9,15 @@ import Foundation
 
 enum AppPaths {
     static var applicationSupportDirectory: URL {
-        let base = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? FileManager.default.homeDirectoryForCurrentUser
+        let base = applicationSupportBaseDirectory
+        let currentDirectory = base.appendingPathComponent("MacDroid", isDirectory: true)
 
-        return base.appendingPathComponent("CleanDroid Gaming", isDirectory: true)
+        migrateLegacySupportDirectoryIfNeeded(
+            from: base.appendingPathComponent("CleanDroid Gaming", isDirectory: true),
+            to: currentDirectory
+        )
+
+        return currentDirectory
     }
 
     static var settingsURL: URL {
@@ -45,5 +48,25 @@ enum AppPaths {
             at: screenshotsDirectory,
             withIntermediateDirectories: true
         )
+    }
+
+    private static var applicationSupportBaseDirectory: URL {
+        FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    private static func migrateLegacySupportDirectoryIfNeeded(from legacyURL: URL, to currentURL: URL) {
+        let fileManager = FileManager.default
+
+        guard fileManager.fileExists(atPath: legacyURL.path),
+              !fileManager.fileExists(atPath: currentURL.path) else {
+            return
+        }
+
+        // Older builds stored JSON files under "CleanDroid Gaming".
+        // Copying that folder once lets existing users keep settings and profiles after the rename.
+        try? fileManager.copyItem(at: legacyURL, to: currentURL)
     }
 }

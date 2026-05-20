@@ -1,6 +1,6 @@
 //
 // SidebarView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Native macOS sidebar with a gaming-style product mark and live emulator status.
 
@@ -26,7 +26,7 @@ struct SidebarView: View {
                     .frame(width: 42, height: 42)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("CleanDroid")
+                        Text("MacDroid")
                             .font(.headline.weight(.bold))
                         Text("Click to launch")
                             .font(.caption)

@@ -1,6 +1,6 @@
 //
 // LibraryView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Shows installed Android apps in a commercial-emulator-style game grid with
 // launch, uninstall, and key profile actions.

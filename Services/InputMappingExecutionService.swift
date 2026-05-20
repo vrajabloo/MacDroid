@@ -1,6 +1,6 @@
 //
 // InputMappingExecutionService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Executes a saved tap mapping through ADB. This is not a full live keyboard
 // overlay yet, but it proves the clean path for future input injection features.

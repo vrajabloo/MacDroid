@@ -1,6 +1,6 @@
 //
 // EmulatorService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Starts and stops the official Google Android Emulator. It does not emulate
 // Android itself; it simply launches the SDK emulator process with game-friendly
@@ -63,7 +63,7 @@ final class EmulatorService {
         let defaults = UserDefaults(suiteName: "com.android.Emulator")
 
         // The official Google Emulator stores its "Show window frame around device"
-        // switch in this preference. CleanDroid turns it off so users do not have
+        // switch in this preference. MacDroid turns it off so users do not have
         // to use Google's unreliable side toolbar for Back, Home, and Recents.
         defaults?.set(!hidden, forKey: "set.frameAlways4")
 

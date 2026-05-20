@@ -1,6 +1,6 @@
 //
 // ADBService.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Wraps Android Debug Bridge commands. ADB is how the macOS launcher lists,
 // installs, launches, and uninstalls Android apps inside the official emulator.
@@ -148,7 +148,7 @@ final class ADBService {
         let targetSerial = await preferredEmulatorSerial(adbURL: adbURL, preferredSerial: serial)
 
         logService.log(
-            "Reading installed user apps from Android. CleanDroid enriches the list with basic package metadata when available.",
+            "Reading installed user apps from Android. MacDroid enriches the list with basic package metadata when available.",
             level: .command,
             command: readableCommand(["shell", "pm", "list", "packages", "-3", "-f"], serial: targetSerial)
         )
@@ -184,7 +184,7 @@ final class ADBService {
         try AppPaths.ensureScreenshotsDirectory()
 
         let targetSerial = await preferredEmulatorSerial(adbURL: adbURL, preferredSerial: serial)
-        let fileName = "cleandroid-\(Int(Date().timeIntervalSince1970)).png"
+        let fileName = "macdroid-\(Int(Date().timeIntervalSince1970)).png"
         let androidPath = "/sdcard/\(fileName)"
         let localURL = AppPaths.screenshotsDirectory.appendingPathComponent(fileName)
 

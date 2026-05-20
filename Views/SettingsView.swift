@@ -1,6 +1,6 @@
 //
 // SettingsView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Performance preferences for the recommended gaming AVD. The app writes
 // supported settings into the AVD config file before launching the emulator.
@@ -85,7 +85,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("FPS depends on emulator and game support. CleanDroid stores the preference now so later builds can apply supported flags or overlays.")
+                Text("FPS depends on emulator and game support. MacDroid stores the preference now so later builds can apply supported flags or overlays.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

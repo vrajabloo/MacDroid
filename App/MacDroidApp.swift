@@ -1,6 +1,6 @@
 //
-// CleanDroidGamingApp.swift
-// CleanDroid Gaming
+// MacDroidApp.swift
+// MacDroid
 //
 // App entry point. The shared AppEnvironment is created once and injected into
 // every SwiftUI screen.
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct CleanDroidGamingApp: App {
+struct MacDroidApp: App {
     @StateObject private var environment = AppEnvironment()
 
     var body: some Scene {

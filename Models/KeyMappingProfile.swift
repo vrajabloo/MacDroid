@@ -1,6 +1,6 @@
 //
 // KeyMappingProfile.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Defines the data model for future keyboard, mouse, and gamepad mapping.
 // The MVP stores profiles now; direct injection can later use ADB input commands

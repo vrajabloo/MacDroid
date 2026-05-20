@@ -1,6 +1,6 @@
 //
 // StatusBadge.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Compact status pill used for emulator and SDK health indicators.
 

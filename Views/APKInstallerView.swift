@@ -1,6 +1,6 @@
 //
 // APKInstallerView.swift
-// CleanDroid Gaming
+// MacDroid
 //
 // Dedicated APK installer screen with drag-and-drop and file browsing. Both
 // paths install through ADB so the official emulator receives the APK.
