@@ -61,6 +61,24 @@ Documentation/    Full docs and limitations
 Packaging/        macOS app bundle scripts
 ```
 
+## For Developers
+
+MacDroid is a SwiftUI + MVVM macOS app. The UI talks to `AppEnvironment`, and `AppEnvironment` coordinates small services that call the official Android SDK tools through `Process`.
+
+Common entry points:
+
+- `App/MacDroidApp.swift`: app windows
+- `Views/RootView.swift`: main shell and sidebar navigation
+- `Managers/AppEnvironment.swift`: shared app state and user actions
+- `Services/ADBService.swift`: app launch, install, uninstall, navigation, screenshots, logcat
+- `Services/EmulatorService.swift`: starts/stops Google Android Emulator
+- `Services/AVDManagerService.swift`: lists/creates/configures AVDs
+- `Services/InputMappingExecutionService.swift`: sends key mapping input through ADB
+
+Developer guide:
+
+- [Developer Guide](Documentation/DEVELOPER_GUIDE.md)
+
 ## Important
 
 MacDroid launches and controls the official Google Android Emulator. It does not bundle Android images, redistribute Play Store, patch Google's emulator binary, or replace the emulator runtime.
@@ -68,5 +86,6 @@ MacDroid launches and controls the official Google Android Emulator. It does not
 ## Docs
 
 - [Full Documentation](Documentation/README.md)
+- [Developer Guide](Documentation/DEVELOPER_GUIDE.md)
 - [Limitations](Documentation/LIMITATIONS.md)
 - [Future Features](Documentation/FUTURE_FEATURES.md)

@@ -230,6 +230,10 @@ Files include:
 
 ## Recommended Development Flow
 
+For a focused code-level overview, read:
+
+- [Developer Guide](DEVELOPER_GUIDE.md)
+
 1. Build:
 
 ```bash
