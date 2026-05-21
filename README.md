@@ -22,6 +22,19 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 - Live key mapping overlay through ADB input
 - Beginner-friendly logs
 
+## Latest Updates
+
+Users can check this section before building or downloading the app.
+
+- App rotation repair was added for apps that stay sideways in landscape mode.
+- The Boost screen now includes `Fix App Rotation`.
+- The UI layout was improved for different window sizes.
+- The app name and default AVD name are now `MacDroid`.
+
+Full update history:
+
+- [Changelog](CHANGELOG.md)
+
 ## Build
 
 ```bash
