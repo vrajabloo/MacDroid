@@ -2,6 +2,12 @@
 
 This file lists important MacDroid updates so users and developers can quickly understand what changed.
 
+## 2026-05-21 - 0.2.2
+
+### Fixed
+
+- Cropped the MacDroid app icon source so the icon fills the macOS icon canvas with much less empty transparent margin.
+
 ## 2026-05-21 - 0.2.1
 
 ### Changed

@@ -8,7 +8,7 @@
 import Foundation
 
 enum AppVersion {
-    static let current = "0.2.1"
+    static let current = "0.2.2"
     static let repositoryOwner = "vrajabloo"
     static let repositoryName = "MacDroid"
 }

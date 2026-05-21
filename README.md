@@ -30,7 +30,7 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 
 Users can check this section before building or downloading the app.
 
-- The app icon was updated with the new neon MacDroid `M` artwork.
+- The app icon was enlarged by cropping the empty transparent border around the neon `M` artwork.
 - Setup Wizard, Health Check, per-game Profiles, and GitHub update checking were added.
 - Release packaging now creates a zip file for GitHub Releases.
 - App rotation repair was added for apps that stay sideways in landscape mode.
