@@ -104,6 +104,14 @@ struct BoostView: View {
                 .disabled(app.emulatorState != .running || app.isBusy)
 
                 Button {
+                    Task { await app.repairAppRotation() }
+                } label: {
+                    Label("Fix App Rotation", systemImage: "rectangle.landscape.rotate")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(app.emulatorState != .running || app.isBusy)
+
+                Button {
                     Task { await app.refreshAll() }
                 } label: {
                     Label("Rescan Environment", systemImage: "magnifyingglass")

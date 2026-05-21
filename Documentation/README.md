@@ -66,6 +66,7 @@ The Boost screen provides quick repair actions:
 
 - Restart ADB
 - Reboot Android
+- Fix App Rotation
 - Clear Play Store State
 - Open Play Store
 - Rescan environment
@@ -283,6 +284,16 @@ Keep:
 - Settings > Repair official toolbar buttons
 
 MacDroid's transparent repair layer should route Back, Home, Recents, and other common buttons through ADB.
+
+### Apps stay sideways after rotating
+
+Use:
+
+- Boost > Fix App Rotation
+- press the toolbar Rotate button once
+- close and reopen the Android app if it still keeps its old layout
+
+MacDroid uses Android Window Manager commands through ADB to ignore app orientation locks where the official emulator allows it.
 
 ### No Play Store
 

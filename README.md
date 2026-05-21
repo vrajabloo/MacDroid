@@ -15,6 +15,7 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 - Recent and favorite games
 - Play Store launcher
 - Boost & Repair tools
+- App rotation repair for stubborn portrait apps
 - Network Boost with direct DNS launch flag
 - Performance profiles
 - Official Google Emulator toolbar repair

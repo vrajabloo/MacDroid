@@ -454,6 +454,41 @@ final class AppEnvironment: ObservableObject {
         }
     }
 
+    func repairAppRotation() async {
+        guard let adbURL = sdkInfo.adbURL else {
+            lastEmulatorControlMessage = "ADB not found"
+            logService.log("Cannot repair app rotation because adb was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running || emulatorState == .booting else {
+            lastEmulatorControlMessage = "Emulator is not running"
+            logService.log("Start the emulator before repairing app rotation.", level: .warning)
+            return
+        }
+
+        await runBusyTask("Fixing app rotation...") {
+            do {
+                _ = try await adbService.repairAppRotation(
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+
+                let rotatedTarget = try await adbService.setRotation(
+                    emulatorRotation,
+                    adbURL: adbURL,
+                    serial: deviceInfo.serial
+                )
+
+                lastEmulatorControlMessage = "App rotation fixed on \(rotatedTarget)"
+                logService.log("App rotation repair is active. If the open app is still sideways, press Rotate once or close and reopen the app.", level: .success)
+            } catch {
+                lastEmulatorControlMessage = "App rotation repair failed"
+                logService.log("App rotation repair failed: \(error.localizedDescription)", level: .error)
+            }
+        }
+    }
+
     func clearPlayStoreData() async {
         guard let adbURL = sdkInfo.adbURL else {
             logService.log("Cannot clear Play Store because adb was not found.", level: .error)

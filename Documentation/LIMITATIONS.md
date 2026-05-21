@@ -71,6 +71,17 @@ MacDroid stores FPS preferences and uses performance-oriented emulator settings.
 
 The app does not promise guaranteed FPS across all games.
 
+## App Rotation
+
+MacDroid can repair many rotation problems by sending official Android Window Manager commands through ADB. The repair tells Android to:
+
+- ignore app orientation locks when possible
+- keep apps aligned with the emulator rotation
+- allow more apps to resize in landscape
+- keep automatic rotation disabled so the emulator toolbar decides orientation
+
+Some apps may still need to be closed and reopened after the repair. Apps with strict layout or account-flow restrictions can still choose to render a phone layout inside the emulator.
+
 ## Key Mapping
 
 MacDroid now includes a live overlay that can send saved keyboard and mouse mappings through ADB input commands.

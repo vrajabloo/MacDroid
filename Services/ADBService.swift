@@ -437,31 +437,133 @@ final class ADBService {
         let targetSerial = await preferredEmulatorSerial(adbURL: adbURL, preferredSerial: serial)
         let normalizedRotation = ((rotation % 4) + 4) % 4
 
-        let commands = [
-            ["shell", "settings", "put", "system", "accelerometer_rotation", "0"],
-            ["shell", "settings", "put", "system", "user_rotation", "\(normalizedRotation)"]
-        ]
+        await applyRotationCompatibility(adbURL: adbURL, serial: targetSerial)
 
-        for arguments in commands {
+        let commands: [(message: String, arguments: [String])] = [
+            (
+                "Locking Android to the selected emulator rotation.",
+                ["shell", "wm", "user-rotation", "lock", "\(normalizedRotation)"]
+            ),
+            (
+                "Saving the selected rotation for older Android images.",
+                ["shell", "settings", "put", "system", "user_rotation", "\(normalizedRotation)"]
+            )
+        ]
+        var didSetRotation = false
+        var lastError = ""
+
+        for command in commands {
             logService.log(
-                "Setting emulator rotation.",
+                command.message,
                 level: .command,
-                command: readableCommand(arguments, serial: targetSerial)
+                command: readableCommand(command.arguments, serial: targetSerial)
             )
 
             let result = try await ShellCommandRunner.run(
                 executableURL: adbURL,
-                arguments: targetedArguments(arguments, serial: targetSerial)
+                arguments: targetedArguments(command.arguments, serial: targetSerial)
             )
 
-            guard result.succeeded else {
-                logService.log(result.combinedOutput, level: .error)
-                throw ShellCommandError.failedToLaunch(result.combinedOutput)
+            if result.succeeded {
+                didSetRotation = true
+            } else {
+                lastError = result.combinedOutput
+                logService.log(result.combinedOutput, level: .warning)
             }
+        }
+
+        guard didSetRotation else {
+            logService.log(lastError, level: .error)
+            throw ShellCommandError.failedToLaunch(lastError)
         }
 
         logService.log("Rotation set on \(targetSerial ?? "the active ADB device").", level: .success)
         return targetSerial ?? "active ADB device"
+    }
+
+    func repairAppRotation(
+        adbURL: URL,
+        serial: String?
+    ) async throws -> String {
+        let targetSerial = await preferredEmulatorSerial(adbURL: adbURL, preferredSerial: serial)
+
+        let didApplyRepair = await applyRotationCompatibility(adbURL: adbURL, serial: targetSerial)
+
+        guard didApplyRepair else {
+            let message = "MacDroid could not apply Android rotation repair commands. Check that the emulator is running and reachable through ADB."
+            logService.log(message, level: .error)
+            throw ShellCommandError.failedToLaunch(message)
+        }
+
+        logService.log(
+            "Checking whether Android is ignoring app orientation locks.",
+            level: .command,
+            command: readableCommand(["shell", "wm", "get-ignore-orientation-request"], serial: targetSerial)
+        )
+        let result = try await ShellCommandRunner.run(
+            executableURL: adbURL,
+            arguments: targetedArguments(["shell", "wm", "get-ignore-orientation-request"], serial: targetSerial)
+        )
+
+        if result.succeeded {
+            logService.log("App rotation repair is active: \(result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines))", level: .success)
+        } else {
+            logService.log(result.combinedOutput, level: .warning)
+        }
+
+        return targetSerial ?? "active ADB device"
+    }
+
+    @discardableResult
+    private func applyRotationCompatibility(adbURL: URL, serial: String?) async -> Bool {
+        let commands: [(message: String, arguments: [String])] = [
+            (
+                "Asking Android to ignore apps that lock themselves to portrait or landscape.",
+                ["shell", "wm", "set-ignore-orientation-request", "true"]
+            ),
+            (
+                "Making Android keep apps aligned with the user's emulator rotation.",
+                ["shell", "wm", "fixed-to-user-rotation", "enabled"]
+            ),
+            (
+                "Turning off automatic rotation so the emulator toolbar controls orientation.",
+                ["shell", "settings", "put", "system", "accelerometer_rotation", "0"]
+            ),
+            (
+                "Allowing more Android apps to resize when the emulator is in landscape.",
+                ["shell", "settings", "put", "global", "force_resizable_activities", "1"]
+            ),
+            (
+                "Enabling Android sandbox display compatibility for apps that read display size directly.",
+                ["shell", "wm", "set-sandbox-display-apis", "true"]
+            )
+        ]
+        var successfulCommands = 0
+
+        for command in commands {
+            logService.log(
+                command.message,
+                level: .command,
+                command: readableCommand(command.arguments, serial: serial)
+            )
+
+            do {
+                let result = try await ShellCommandRunner.run(
+                    executableURL: adbURL,
+                    arguments: targetedArguments(command.arguments, serial: serial)
+                )
+
+                if result.succeeded {
+                    successfulCommands += 1
+                } else {
+                    logService.log(result.combinedOutput, level: .warning)
+                }
+            } catch {
+                logService.log("Rotation repair command failed: \(error.localizedDescription)", level: .warning)
+            }
+        }
+
+        return successfulCommands > 0
     }
 
     private func parsePackageListLine(_ line: String) -> AndroidApp? {
