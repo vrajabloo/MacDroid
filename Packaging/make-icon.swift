@@ -2,8 +2,8 @@
 // make-icon.swift
 // MacDroid
 //
-// Generates a simple premium app icon for the local macOS bundle. This keeps the
-// project self-contained without needing a designer-provided .icns file yet.
+// Converts Packaging/AppIconSource.png into the full macOS .iconset and .icns
+// files. Keeping the source image in the repo makes icon updates repeatable.
 
 import AppKit
 import Foundation
@@ -11,6 +11,11 @@ import Foundation
 let outputDirectory = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? ".")
 let iconsetURL = outputDirectory.appendingPathComponent("AppIcon.iconset", isDirectory: true)
 let icnsURL = outputDirectory.appendingPathComponent("AppIcon.icns")
+let sourceURL = outputDirectory.appendingPathComponent("AppIconSource.png")
+
+guard let sourceImage = NSImage(contentsOf: sourceURL) else {
+    fatalError("Missing AppIconSource.png at \(sourceURL.path)")
+}
 
 try? FileManager.default.removeItem(at: iconsetURL)
 try? FileManager.default.removeItem(at: icnsURL)
@@ -34,7 +39,13 @@ for size in sizes {
     let image = NSImage(size: pixelSize)
 
     image.lockFocus()
-    drawIcon(in: CGRect(origin: .zero, size: pixelSize))
+    NSGraphicsContext.current?.imageInterpolation = .high
+    sourceImage.draw(
+        in: CGRect(origin: .zero, size: pixelSize),
+        from: CGRect(origin: .zero, size: sourceImage.size),
+        operation: .copy,
+        fraction: 1
+    )
     image.unlockFocus()
 
     guard
@@ -53,37 +64,3 @@ process.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
 process.arguments = ["-c", "icns", iconsetURL.path, "-o", icnsURL.path]
 try process.run()
 process.waitUntilExit()
-
-func drawIcon(in rect: CGRect) {
-    let cornerRadius = rect.width * 0.18
-    let backgroundPath = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
-    NSColor(calibratedRed: 0.03, green: 0.04, blue: 0.045, alpha: 1).setFill()
-    backgroundPath.fill()
-
-    let accentRect = rect.insetBy(dx: rect.width * 0.13, dy: rect.height * 0.13)
-    let accentPath = NSBezierPath(roundedRect: accentRect, xRadius: rect.width * 0.12, yRadius: rect.width * 0.12)
-    NSColor(calibratedRed: 0.12, green: 0.92, blue: 0.54, alpha: 1).setFill()
-    accentPath.fill()
-
-    let innerRect = accentRect.insetBy(dx: rect.width * 0.08, dy: rect.height * 0.08)
-    let innerPath = NSBezierPath(roundedRect: innerRect, xRadius: rect.width * 0.08, yRadius: rect.width * 0.08)
-    NSColor(calibratedRed: 0.02, green: 0.03, blue: 0.028, alpha: 1).setFill()
-    innerPath.fill()
-
-    if let symbol = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: nil) {
-        let symbolRect = rect.insetBy(dx: rect.width * 0.24, dy: rect.height * 0.28)
-        symbol.isTemplate = true
-        NSColor(calibratedRed: 0.12, green: 0.92, blue: 0.54, alpha: 1).set()
-        symbol.draw(in: symbolRect)
-    }
-
-    let playCircle = NSBezierPath(ovalIn: CGRect(
-        x: rect.maxX - rect.width * 0.34,
-        y: rect.minY + rect.height * 0.12,
-        width: rect.width * 0.22,
-        height: rect.width * 0.22
-    ))
-    NSColor(calibratedRed: 0.0, green: 0.76, blue: 1.0, alpha: 1).setFill()
-    playCircle.fill()
-}
-

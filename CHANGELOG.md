@@ -2,6 +2,13 @@
 
 This file lists important MacDroid updates so users and developers can quickly understand what changed.
 
+## 2026-05-21 - 0.2.1
+
+### Changed
+
+- Replaced the MacDroid app icon with the new neon `M` artwork.
+- Updated icon generation so release builds always use `Packaging/AppIconSource.png`.
+
 ## 2026-05-21
 
 ### Added
