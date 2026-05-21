@@ -22,6 +22,7 @@ struct SettingsView: View {
                     performancePanel
                     displayPanel
                     networkPanel
+                    updatesPanel
                     modesPanel
                     avdPanel
                 }
@@ -208,11 +209,45 @@ struct SettingsView: View {
                 Toggle("Battery-saving mode", isOn: $app.settings.batterySavingEnabled)
                 Toggle("Start emulator when app opens", isOn: $app.settings.launchEmulatorWhenAppOpens)
                 Toggle("Auto-launch last game after boot", isOn: $app.settings.autoLaunchLastGameAfterBoot)
+                Toggle("Setup wizard completed", isOn: $app.settings.setupWizardCompleted)
 
                 Text("Performance mode prefers GPU host rendering and higher AVD resources. Battery-saving mode is stored for future throttling support.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var updatesPanel: some View {
+        PanelView {
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Updates", systemImage: "arrow.down.circle.fill")
+                    .font(.title3.weight(.bold))
+
+                Toggle("Check GitHub Releases automatically", isOn: $app.settings.checkForUpdatesAutomatically)
+
+                Text("Current version: \(AppVersion.current)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(app.updateInfo.message)
+                    .foregroundStyle(app.updateInfo.isUpdateAvailable ? Color(hex: 0xFFD166) : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack {
+                    Button {
+                        Task { await app.checkForUpdates() }
+                    } label: {
+                        Label("Check Now", systemImage: "arrow.clockwise")
+                    }
+
+                    Button {
+                        app.openLatestReleasePage()
+                    } label: {
+                        Label("GitHub Releases", systemImage: "safari.fill")
+                    }
+                }
             }
         }
     }

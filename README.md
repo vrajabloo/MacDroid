@@ -7,12 +7,15 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 ## Highlights
 
 - Dark premium macOS gaming UI
+- First-run Setup Wizard
+- Health Check screen
 - Android SDK / ADB / Emulator detection
 - Start, stop, restart, and reboot emulator
 - Recommended ARM64 Google Play AVD setup
 - APK drag-and-drop installer
 - Installed games library
 - Recent and favorite games
+- Per-game launch profiles
 - Play Store launcher
 - Boost & Repair tools
 - App rotation repair for stubborn portrait apps
@@ -20,12 +23,15 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 - Performance profiles
 - Official Google Emulator toolbar repair
 - Live key mapping overlay through ADB input
+- GitHub Release update checker
 - Beginner-friendly logs
 
 ## Latest Updates
 
 Users can check this section before building or downloading the app.
 
+- Setup Wizard, Health Check, per-game Profiles, and GitHub update checking were added.
+- Release packaging now creates a zip file for GitHub Releases.
 - App rotation repair was added for apps that stay sideways in landscape mode.
 - The Boost screen now includes `Fix App Rotation`.
 - The UI layout was improved for different window sizes.
@@ -35,11 +41,29 @@ Full update history:
 
 - [Changelog](CHANGELOG.md)
 
+## Download
+
+GitHub Releases can contain a ready-to-open zip:
+
+```text
+MacDroid-<version>-macOS-arm64.zip
+```
+
+Unzip it, then open `MacDroid.app`.
+
+MacDroid still requires Android Studio or Android SDK tools on the user's Mac.
+
 ## Build
 
 ```bash
 swift build
 ./Packaging/build-app.sh
+```
+
+To create a release zip locally:
+
+```bash
+./Packaging/package-release.sh
 ```
 
 Then open:

@@ -25,10 +25,16 @@ struct RootView: View {
                 switch selectedSection ?? .home {
                 case .home:
                     HomeDashboardView()
+                case .setup:
+                    SetupWizardView(selectedSection: $selectedSection)
                 case .library:
                     LibraryView()
+                case .profiles:
+                    GameProfilesView(selectedSection: $selectedSection)
                 case .installer:
                     APKInstallerView()
+                case .health:
+                    HealthCheckView(selectedSection: $selectedSection)
                 case .boost:
                     BoostView()
                 case .controls:

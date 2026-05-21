@@ -2,6 +2,26 @@
 
 This file lists important MacDroid updates so users and developers can quickly understand what changed.
 
+## 2026-05-21
+
+### Added
+
+- Added first-run Setup Wizard for SDK, ADB, Emulator, AVD, and Play Store readiness.
+- Added Health Check screen with beginner-friendly status cards and repair actions.
+- Added per-game launch profiles for orientation, performance, resolution, DPI, and key mapping overlay preference.
+- Added GitHub Release update checker inside the app.
+- Added advanced rotation controls: Portrait, Landscape, Force Landscape, and Reset.
+- Added Shooter and MOBA key mapping presets.
+- Added key mapping JSON export.
+- Added local release zip packaging script.
+- Added GitHub Actions workflow for release artifacts and tag-based release publishing.
+
+### Improved
+
+- Home dashboard now shows setup/update status and health metrics.
+- Settings now includes update preferences and setup completion state.
+- Boost & Repair now has a dedicated Rotation Control card.
+
 ## 2026-05-20
 
 ### Added

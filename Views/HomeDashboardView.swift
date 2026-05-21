@@ -16,11 +16,18 @@ struct HomeDashboardView: View {
         viewModel.recentGames(from: app.games)
     }
 
+    private var readyHealthCount: Int {
+        app.healthCheckItems.filter { $0.status == .good }.count
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 hero
                 metrics
+                if !app.settings.setupWizardCompleted || app.updateInfo.isUpdateAvailable {
+                    statusStrip
+                }
 
                 LazyVGrid(columns: adaptiveColumns(minimum: 360), spacing: 18) {
                     recentGamesPanel
@@ -201,6 +208,45 @@ struct HomeDashboardView: View {
             MetricCard(title: "Available AVDs", value: "\(app.avds.count)", systemImage: "iphone.gen3", color: Color(hex: 0x00C2FF))
             MetricCard(title: "ADB", value: app.sdkInfo.hasADB ? "Ready" : "Missing", systemImage: "terminal.fill", color: app.sdkInfo.hasADB ? Color(hex: 0x1EEA8A) : Color(hex: 0xFFD166))
             MetricCard(title: "Play Store", value: app.sdkInfo.playStoreImageAvailable ? "Ready" : "Check", systemImage: "play.square.fill", color: app.sdkInfo.playStoreImageAvailable ? Color(hex: 0x1EEA8A) : Color(hex: 0xFFD166))
+            MetricCard(title: "Health", value: "\(readyHealthCount)/\(max(app.healthCheckItems.count, 1))", systemImage: "heart.text.square.fill", color: readyHealthCount == app.healthCheckItems.count ? Color(hex: 0x1EEA8A) : Color(hex: 0xFFD166))
+            MetricCard(title: "Updates", value: app.updateInfo.isUpdateAvailable ? "New" : "OK", systemImage: "arrow.down.circle.fill", color: app.updateInfo.isUpdateAvailable ? Color(hex: 0xFFD166) : Color(hex: 0x1EEA8A))
+        }
+    }
+
+    private var statusStrip: some View {
+        PanelView {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    statusStripText
+                    Spacer()
+                    Button {
+                        Task { await app.checkForUpdates() }
+                    } label: {
+                        Label("Check Updates", systemImage: "arrow.clockwise")
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    statusStripText
+                    Button {
+                        Task { await app.checkForUpdates() }
+                    } label: {
+                        Label("Check Updates", systemImage: "arrow.clockwise")
+                    }
+                }
+            }
+        }
+    }
+
+    private var statusStripText: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(app.updateInfo.isUpdateAvailable ? "Update available" : "Setup reminder", systemImage: app.updateInfo.isUpdateAvailable ? "arrow.down.circle.fill" : "checklist.checked")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(app.updateInfo.isUpdateAvailable ? Color(hex: 0xFFD166) : Color(hex: 0x1EEA8A))
+
+            Text(app.updateInfo.isUpdateAvailable ? app.updateInfo.message : "Finish Setup Wizard once so MacDroid knows the SDK and AVD are ready.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

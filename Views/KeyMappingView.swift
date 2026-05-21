@@ -165,11 +165,35 @@ struct KeyMappingView: View {
     }
 
     private func headerActions(for game: AndroidApp) -> some View {
-        HStack(spacing: 10) {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                mappingPresetButtons(for: game)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                mappingPresetButtons(for: game)
+            }
+        }
+    }
+
+    private func mappingPresetButtons(for game: AndroidApp) -> some View {
+        Group {
             Button {
                 app.createDefaultProfile(for: game)
             } label: {
-                Label("WASD Preset", systemImage: "wand.and.stars")
+                Label("WASD", systemImage: "wand.and.stars")
+            }
+
+            Button {
+                app.createShooterProfile(for: game)
+            } label: {
+                Label("Shooter", systemImage: "scope")
+            }
+
+            Button {
+                app.createMOBAMappingProfile(for: game)
+            } label: {
+                Label("MOBA", systemImage: "sparkles")
             }
 
             Button {
@@ -250,6 +274,12 @@ struct KeyMappingView: View {
                 app.saveKeyProfiles()
             } label: {
                 Label("Save", systemImage: "square.and.arrow.down")
+            }
+
+            Button {
+                app.exportKeyProfiles()
+            } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
             }
         }
     }

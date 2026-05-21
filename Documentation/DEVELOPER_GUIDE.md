@@ -51,7 +51,7 @@ Define the main app layout and sidebar navigation.
 Managers/AppEnvironment.swift
 ```
 
-Owns shared state such as SDK detection, emulator status, installed games, settings, key profiles, logs, and active device information.
+Owns shared state such as SDK detection, emulator status, installed games, settings, key profiles, game profiles, health checks, update status, logs, and active device information.
 
 ```text
 Services/ADBService.swift
@@ -78,6 +78,24 @@ Services/InputMappingExecutionService.swift
 Converts normalized key mapping positions into Android screen pixels and sends ADB input commands.
 
 ```text
+Services/GameProfileService.swift
+```
+
+Persists per-game launch profiles for orientation, performance, resolution, DPI, and overlay behavior.
+
+```text
+Services/HealthCheckService.swift
+```
+
+Builds the Health screen report from current SDK, emulator, library, profile, and update state.
+
+```text
+Services/UpdateCheckerService.swift
+```
+
+Checks GitHub Releases and reports whether a newer MacDroid build is available.
+
+```text
 Utilities/ShellCommandRunner.swift
 ```
 
@@ -101,6 +119,25 @@ Runs shell commands using Swift `Process`.
 5. `EmulatorService.startEmulator(...)`
 6. `ADBService.waitForDevice(...)`
 7. `ADBService.bootCompleted(...)`
+
+### First-Run Setup
+
+1. `SetupWizardView` shows SDK, ADB, Emulator, AVD Manager, Play Store image, and AVD status.
+2. `AppEnvironment.runSetupAutoFix()` refreshes SDK paths and creates the recommended AVD when possible.
+3. `AppEnvironment.completeSetupWizard()` marks setup complete in `GamingSettings`.
+
+### Health Check
+
+1. `AppEnvironment.refreshHealthChecks()`
+2. `HealthCheckService.buildReport(...)`
+3. `HealthCheckView` shows cards and routes repair actions back through `AppEnvironment`.
+
+### Game Profiles
+
+1. `GameProfilesView` edits `GameProfile` values.
+2. `GameProfileService` saves them to JSON.
+3. `AppEnvironment.launch(_:)` loads the matching profile before launching the Android app.
+4. Orientation is applied through `ADBService`.
 
 ### Refresh Game Library
 

@@ -33,8 +33,20 @@ final class KeyMappingService {
         }
     }
 
+    func exportProfiles(_ profiles: [KeyMappingProfile]) -> URL? {
+        do {
+            try AppPaths.ensureExportsDirectory()
+            let exportURL = AppPaths.exportsDirectory.appendingPathComponent("key-mappings-export.json")
+            try FileStorage.save(profiles, to: exportURL)
+            logService.log("Key mappings exported to \(exportURL.path).", level: .success)
+            return exportURL
+        } catch {
+            logService.log("Could not export key mappings: \(error.localizedDescription)", level: .error)
+            return nil
+        }
+    }
+
     func profile(for app: AndroidApp, profiles: [KeyMappingProfile]) -> KeyMappingProfile {
         profiles.first(where: { $0.packageName == app.packageName }) ?? KeyMappingProfile.empty(for: app)
     }
 }
-

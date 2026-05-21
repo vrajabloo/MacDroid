@@ -25,6 +25,8 @@ struct GamingSettings: Codable, Equatable {
     var repairOfficialEmulatorToolbar: Bool
     var networkBoostEnabled: Bool
     var dnsPreset: DNSPreset
+    var setupWizardCompleted: Bool
+    var checkForUpdatesAutomatically: Bool
 
     static let `default` = GamingSettings(
         performanceProfile: .performance,
@@ -43,7 +45,9 @@ struct GamingSettings: Codable, Equatable {
         hideOfficialEmulatorToolbar: false,
         repairOfficialEmulatorToolbar: true,
         networkBoostEnabled: true,
-        dnsPreset: .googleCloudflare
+        dnsPreset: .googleCloudflare,
+        setupWizardCompleted: false,
+        checkForUpdatesAutomatically: true
     )
 
     enum CodingKeys: String, CodingKey {
@@ -64,6 +68,8 @@ struct GamingSettings: Codable, Equatable {
         case repairOfficialEmulatorToolbar
         case networkBoostEnabled
         case dnsPreset
+        case setupWizardCompleted
+        case checkForUpdatesAutomatically
     }
 
     init(
@@ -83,7 +89,9 @@ struct GamingSettings: Codable, Equatable {
         hideOfficialEmulatorToolbar: Bool,
         repairOfficialEmulatorToolbar: Bool,
         networkBoostEnabled: Bool,
-        dnsPreset: DNSPreset
+        dnsPreset: DNSPreset,
+        setupWizardCompleted: Bool,
+        checkForUpdatesAutomatically: Bool
     ) {
         self.performanceProfile = performanceProfile
         self.ramPreset = ramPreset
@@ -102,6 +110,8 @@ struct GamingSettings: Codable, Equatable {
         self.repairOfficialEmulatorToolbar = repairOfficialEmulatorToolbar
         self.networkBoostEnabled = networkBoostEnabled
         self.dnsPreset = dnsPreset
+        self.setupWizardCompleted = setupWizardCompleted
+        self.checkForUpdatesAutomatically = checkForUpdatesAutomatically
     }
 
     init(from decoder: Decoder) throws {
@@ -123,6 +133,8 @@ struct GamingSettings: Codable, Equatable {
         self.repairOfficialEmulatorToolbar = try container.decodeIfPresent(Bool.self, forKey: .repairOfficialEmulatorToolbar) ?? true
         self.networkBoostEnabled = try container.decodeIfPresent(Bool.self, forKey: .networkBoostEnabled) ?? true
         self.dnsPreset = try container.decodeIfPresent(DNSPreset.self, forKey: .dnsPreset) ?? .googleCloudflare
+        self.setupWizardCompleted = try container.decodeIfPresent(Bool.self, forKey: .setupWizardCompleted) ?? true
+        self.checkForUpdatesAutomatically = try container.decodeIfPresent(Bool.self, forKey: .checkForUpdatesAutomatically) ?? true
     }
 }
 

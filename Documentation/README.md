@@ -13,6 +13,10 @@ The goal is to make the official Android Emulator feel like a beginner-friendly 
 - one library
 - one APK installer
 - one repair area
+- setup wizard
+- health check report
+- per-game launch profiles
+- update checker
 - simple settings
 - readable logs
 
@@ -67,6 +71,7 @@ The Boost screen provides quick repair actions:
 - Restart ADB
 - Reboot Android
 - Fix App Rotation
+- Portrait / Landscape / Force Landscape / Reset rotation controls
 - Clear Play Store State
 - Open Play Store
 - Rescan environment
@@ -88,6 +93,38 @@ The Key Mapping screen stores per-game input profiles and includes a live floati
 - editable keyboard, mouse, and gamepad-ready triggers
 - live overlay window
 - ADB tap, long-press, and swipe execution
+- WASD, Shooter, and MOBA presets
+- JSON export for saved mappings
+
+### Game Profiles
+
+The Profiles screen stores launch preferences per app:
+
+- orientation mode
+- performance profile
+- resolution
+- DPI
+- automatic key mapping overlay preference
+
+These profiles make repeat launches feel closer to a commercial Android emulator launcher.
+
+### Health Check
+
+The Health screen checks the common failure points:
+
+- ADB
+- Emulator
+- AVD Manager
+- recommended AVD
+- Play Store image
+- emulator state
+- game library
+- game profiles
+- update status
+
+### Updates
+
+MacDroid can check the public GitHub Releases API and show whether a newer release is available. It does not install updates automatically.
 
 ### Settings
 

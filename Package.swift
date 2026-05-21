@@ -24,7 +24,9 @@ let package = Package(
                 "Package.swift",
                 "README.md",
                 "Build",
+                "CHANGELOG.md",
                 "Documentation",
+                ".github",
                 "Packaging",
                 "Resources"
             ]

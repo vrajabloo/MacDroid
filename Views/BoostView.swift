@@ -18,6 +18,7 @@ struct BoostView: View {
                 LazyVGrid(columns: adaptiveColumns, spacing: 18) {
                     networkCard
                     repairCard
+                    rotationCard
                     playStoreCard
                     diagnosticsCard
                 }
@@ -149,6 +150,37 @@ struct BoostView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private var rotationCard: some View {
+        PanelView {
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Rotation Control", systemImage: "rectangle.landscape.rotate")
+                    .font(.title3.weight(.bold))
+
+                Text("Use these when an app keeps the wrong portrait or landscape layout.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+                    rotationButton(.portrait)
+                    rotationButton(.landscape)
+                    rotationButton(.forceLandscape)
+                    rotationButton(.reset)
+                }
+            }
+        }
+    }
+
+    private func rotationButton(_ preference: GameOrientationPreference) -> some View {
+        Button {
+            Task { await app.applyOrientationPreference(preference) }
+        } label: {
+            Label(preference.rawValue, systemImage: preference.systemImage)
+                .frame(maxWidth: .infinity)
+        }
+        .disabled(app.emulatorState != .running || app.isBusy)
     }
 
     private var diagnosticsCard: some View {

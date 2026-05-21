@@ -32,8 +32,16 @@ enum AppPaths {
         applicationSupportDirectory.appendingPathComponent("key-mappings.json")
     }
 
+    static var gameProfilesURL: URL {
+        applicationSupportDirectory.appendingPathComponent("game-profiles.json")
+    }
+
     static var screenshotsDirectory: URL {
         applicationSupportDirectory.appendingPathComponent("Screenshots", isDirectory: true)
+    }
+
+    static var exportsDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("Exports", isDirectory: true)
     }
 
     static func ensureApplicationSupportDirectory() throws {
@@ -46,6 +54,13 @@ enum AppPaths {
     static func ensureScreenshotsDirectory() throws {
         try FileManager.default.createDirectory(
             at: screenshotsDirectory,
+            withIntermediateDirectories: true
+        )
+    }
+
+    static func ensureExportsDirectory() throws {
+        try FileManager.default.createDirectory(
+            at: exportsDirectory,
             withIntermediateDirectories: true
         )
     }

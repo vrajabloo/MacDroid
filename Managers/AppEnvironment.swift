@@ -5,6 +5,7 @@
 // The central coordinator for the app. It owns services, exposes app-wide state,
 // and gives SwiftUI views simple async actions such as Start Emulator or Install APK.
 
+import AppKit
 import Foundation
 
 @MainActor
@@ -16,6 +17,9 @@ final class AppEnvironment: ObservableObject {
     @Published var selectedAVDName: String
     @Published var games: [AndroidApp] = []
     @Published var keyProfiles: [KeyMappingProfile] = []
+    @Published var gameProfiles: [GameProfile] = []
+    @Published var healthCheckItems: [HealthCheckItem] = []
+    @Published var updateInfo: AppUpdateInfo = .idle
     @Published var settings: GamingSettings
     @Published var isBusy = false
     @Published var installProgress: Double?
@@ -37,6 +41,9 @@ final class AppEnvironment: ObservableObject {
     let apkInstallerService: APKInstallerService
     let gameLibraryService: GameLibraryService
     let keyMappingService: KeyMappingService
+    let gameProfileService: GameProfileService
+    let healthCheckService: HealthCheckService
+    let updateCheckerService: UpdateCheckerService
     let inputMappingExecutionService: InputMappingExecutionService
     let settingsService: SettingsService
     let officialToolbarRepairService: OfficialEmulatorToolbarRepairService
@@ -50,12 +57,16 @@ final class AppEnvironment: ObservableObject {
         let settingsService = SettingsService(logService: logService)
         let gameLibraryService = GameLibraryService(logService: logService)
         let keyMappingService = KeyMappingService(logService: logService)
+        let gameProfileService = GameProfileService(logService: logService)
         let avdManagerService = AVDManagerService(logService: logService)
 
         self.logService = logService
         self.settingsService = settingsService
         self.gameLibraryService = gameLibraryService
         self.keyMappingService = keyMappingService
+        self.gameProfileService = gameProfileService
+        self.healthCheckService = HealthCheckService()
+        self.updateCheckerService = UpdateCheckerService(logService: logService)
         self.avdManagerService = avdManagerService
         self.sdkDetector = AndroidSDKDetector(logService: logService)
         self.adbService = ADBService(logService: logService)
@@ -66,6 +77,7 @@ final class AppEnvironment: ObservableObject {
         self.settings = settingsService.loadSettings()
         self.games = gameLibraryService.loadCachedLibrary()
         self.keyProfiles = keyMappingService.loadProfiles()
+        self.gameProfiles = gameProfileService.loadProfiles()
         self.selectedAVDName = avdManagerService.recommendedAVDName
 
         logService.log("MacDroid opened. This app wraps the official Google Android Emulator.", level: .info)
@@ -78,7 +90,16 @@ final class AppEnvironment: ObservableObject {
 
         hasBootstrapped = true
         await refreshAll()
-        await startFromAppIconIfNeeded()
+
+        if settings.checkForUpdatesAutomatically {
+            await checkForUpdates()
+        }
+
+        if settings.setupWizardCompleted {
+            await startFromAppIconIfNeeded()
+        } else {
+            logService.log("Setup Wizard is not complete yet. Finish Setup before using auto-start.", level: .info)
+        }
     }
 
     func refreshAll() async {
@@ -90,6 +111,8 @@ final class AppEnvironment: ObservableObject {
             if emulatorState == .running {
                 await refreshGames()
             }
+
+            refreshHealthChecks()
         }
     }
 
@@ -232,6 +255,7 @@ final class AppEnvironment: ObservableObject {
     func refreshGames() async {
         guard let adbURL = sdkInfo.adbURL else {
             logService.log("Cannot refresh games because ADB was not found.", level: .warning)
+            refreshHealthChecks()
             return
         }
 
@@ -242,6 +266,63 @@ final class AppEnvironment: ObservableObject {
         } catch {
             logService.log("Could not refresh installed games: \(error.localizedDescription)", level: .error)
         }
+
+        refreshHealthChecks()
+    }
+
+    func completeSetupWizard() {
+        settings.setupWizardCompleted = true
+        saveSettings()
+        refreshHealthChecks()
+        logService.log("Setup Wizard completed. MacDroid is ready to launch Android games.", level: .success)
+    }
+
+    func reopenSetupWizard() {
+        settings.setupWizardCompleted = false
+        saveSettings()
+        refreshHealthChecks()
+    }
+
+    func runSetupAutoFix() async {
+        await runBusyTask("Running setup repair...") {
+            await refreshSDK()
+
+            if sdkInfo.canManageAVDs {
+                await refreshAVDs()
+
+                if !avdExists(named: avdManagerService.recommendedAVDName) {
+                    await createRecommendedAVD()
+                }
+            }
+
+            await refreshAll()
+        }
+    }
+
+    func refreshHealthChecks() {
+        healthCheckItems = healthCheckService.buildReport(
+            sdkInfo: sdkInfo,
+            avds: avds,
+            emulatorState: emulatorState,
+            deviceInfo: deviceInfo,
+            games: games,
+            settings: settings,
+            gameProfiles: gameProfiles,
+            updateInfo: updateInfo
+        )
+    }
+
+    func checkForUpdates() async {
+        updateInfo = await updateCheckerService.checkForUpdates()
+        refreshHealthChecks()
+    }
+
+    func openLatestReleasePage() {
+        guard let url = updateInfo.releaseURL ?? URL(string: "https://github.com/\(AppVersion.repositoryOwner)/\(AppVersion.repositoryName)/releases") else {
+            return
+        }
+
+        NSWorkspace.shared.open(url)
     }
 
     func installAPK(from apkURL: URL) async {
@@ -283,6 +364,8 @@ final class AppEnvironment: ObservableObject {
 
         await runBusyTask("Launching \(app.name)...") {
             do {
+                applyStoredGameProfileBeforeLaunch(for: app)
+
                 if let profile = keyProfiles.first(where: { $0.packageName == app.packageName }) {
                     activeKeyMappingPackageName = app.packageName
                     keyMappingOverlayIsArmed = true
@@ -295,6 +378,11 @@ final class AppEnvironment: ObservableObject {
                     adbURL: adbURL,
                     serial: deviceInfo.serial
                 )
+
+                if let gameProfile = gameProfiles.first(where: { $0.packageName == app.packageName }) {
+                    await applyOrientationPreference(gameProfile.orientationPreference)
+                }
+
                 games = gameLibraryService.markPlayed(app, in: games)
             } catch {
                 logService.log("Could not launch \(app.name): \(error.localizedDescription)", level: .error)
@@ -621,10 +709,105 @@ final class AppEnvironment: ObservableObject {
         }
     }
 
+    func applyOrientationPreference(_ preference: GameOrientationPreference) async {
+        guard preference != .system else {
+            logService.log("Using system orientation. MacDroid did not change Android rotation.", level: .info)
+            return
+        }
+
+        guard let adbURL = sdkInfo.adbURL else {
+            lastEmulatorControlMessage = "ADB not found"
+            logService.log("Cannot apply \(preference.rawValue) because ADB was not found.", level: .error)
+            return
+        }
+
+        guard emulatorState == .running || emulatorState == .booting else {
+            lastEmulatorControlMessage = "Emulator is not running"
+            logService.log("Start the emulator before changing orientation.", level: .warning)
+            return
+        }
+
+        do {
+            let target: String
+
+            switch preference {
+            case .system:
+                return
+            case .reset:
+                target = try await adbService.resetRotation(adbURL: adbURL, serial: deviceInfo.serial)
+                emulatorRotation = 0
+            case .forceLandscape:
+                _ = try await adbService.repairAppRotation(adbURL: adbURL, serial: deviceInfo.serial)
+                emulatorRotation = preference.adbRotation ?? 0
+                target = try await adbService.setRotation(emulatorRotation, adbURL: adbURL, serial: deviceInfo.serial)
+            case .landscape, .portrait:
+                emulatorRotation = preference.adbRotation ?? emulatorRotation
+                target = try await adbService.setRotation(emulatorRotation, adbURL: adbURL, serial: deviceInfo.serial)
+            }
+
+            lastEmulatorControlMessage = "\(preference.rawValue) applied to \(target)"
+        } catch {
+            lastEmulatorControlMessage = "\(preference.rawValue) failed"
+            logService.log("Orientation change failed: \(error.localizedDescription)", level: .error)
+        }
+    }
+
     func saveSettings() {
         settingsService.saveSettings(settings)
         avdManagerService.apply(settings: settings, toAVDNamed: selectedAVDName)
         updateOfficialToolbarRepair()
+        refreshHealthChecks()
+    }
+
+    func saveGameProfiles() {
+        gameProfileService.saveProfiles(gameProfiles)
+        refreshHealthChecks()
+    }
+
+    @discardableResult
+    func ensureGameProfile(for app: AndroidApp) -> Int {
+        if let index = gameProfiles.firstIndex(where: { $0.packageName == app.packageName }) {
+            return index
+        }
+
+        let keyProfileIndex = ensureKeyMappingProfile(for: app)
+        let profile = GameProfile.default(
+            for: app,
+            keyMappingProfileID: keyProfiles.indices.contains(keyProfileIndex) ? keyProfiles[keyProfileIndex].id : nil
+        )
+        gameProfiles.append(profile)
+        saveGameProfiles()
+        return gameProfiles.count - 1
+    }
+
+    func createRecommendedGameProfile(for app: AndroidApp) {
+        let index = ensureGameProfile(for: app)
+        gameProfiles[index].displayName = app.name
+        gameProfiles[index].orientationPreference = .forceLandscape
+        gameProfiles[index].performanceProfile = .performance
+        gameProfiles[index].resolutionPreset = .p1080
+        gameProfiles[index].dpiPreset = .dpi320
+        gameProfiles[index].autoOpenKeyMappingOverlay = true
+        gameProfiles[index].updatedAt = .now
+        createDefaultProfile(for: app)
+        saveGameProfiles()
+    }
+
+    private func applyStoredGameProfileBeforeLaunch(for app: AndroidApp) {
+        guard let gameProfile = gameProfiles.first(where: { $0.packageName == app.packageName }) else {
+            return
+        }
+
+        settings.performanceProfile = gameProfile.performanceProfile
+        settings.resolutionPreset = gameProfile.resolutionPreset
+        settings.dpiPreset = gameProfile.dpiPreset
+
+        if gameProfile.autoOpenKeyMappingOverlay {
+            activeKeyMappingPackageName = app.packageName
+            keyMappingOverlayIsArmed = true
+        }
+
+        logService.log("Loaded game profile for \(app.name). Display and resource changes apply fully after the next emulator restart.", level: .info)
     }
 
     func applyPerformanceProfile(_ profile: PerformanceProfile) {
@@ -727,6 +910,46 @@ final class AppEnvironment: ObservableObject {
         keyProfiles[profileIndex].updatedAt = .now
         activateKeyMapping(for: app)
         saveKeyProfiles()
+    }
+
+    func createShooterProfile(for app: AndroidApp) {
+        let profileIndex = ensureKeyMappingProfile(for: app)
+
+        keyProfiles[profileIndex].mappings = [
+            .sample(trigger: "W", x: 0.18, y: 0.62),
+            .sample(trigger: "A", x: 0.10, y: 0.72),
+            .sample(trigger: "S", x: 0.18, y: 0.82),
+            .sample(trigger: "D", x: 0.26, y: 0.72),
+            InputMapping(inputType: .mouse, trigger: "Left Click", action: .tap, tapPoint: NormalizedPoint(x: 0.86, y: 0.54), note: "Fire"),
+            InputMapping(inputType: .keyboard, trigger: "Space", action: .tap, tapPoint: NormalizedPoint(x: 0.76, y: 0.78), note: "Jump"),
+            InputMapping(inputType: .keyboard, trigger: "R", action: .tap, tapPoint: NormalizedPoint(x: 0.70, y: 0.82), note: "Reload"),
+            InputMapping(inputType: .keyboard, trigger: "Shift", action: .longPress, tapPoint: NormalizedPoint(x: 0.32, y: 0.84), durationMilliseconds: 650, note: "Sprint")
+        ]
+        keyProfiles[profileIndex].inputBridgeMode = .liveOverlay
+        keyProfiles[profileIndex].updatedAt = .now
+        saveKeyProfiles()
+    }
+
+    func createMOBAMappingProfile(for app: AndroidApp) {
+        let profileIndex = ensureKeyMappingProfile(for: app)
+
+        keyProfiles[profileIndex].mappings = [
+            .sample(trigger: "W", x: 0.18, y: 0.62),
+            .sample(trigger: "A", x: 0.10, y: 0.72),
+            .sample(trigger: "S", x: 0.18, y: 0.82),
+            .sample(trigger: "D", x: 0.26, y: 0.72),
+            InputMapping(inputType: .keyboard, trigger: "Q", action: .tap, tapPoint: NormalizedPoint(x: 0.68, y: 0.80), note: "Skill 1"),
+            InputMapping(inputType: .keyboard, trigger: "E", action: .tap, tapPoint: NormalizedPoint(x: 0.78, y: 0.72), note: "Skill 2"),
+            InputMapping(inputType: .keyboard, trigger: "R", action: .tap, tapPoint: NormalizedPoint(x: 0.88, y: 0.64), note: "Ultimate"),
+            InputMapping(inputType: .mouse, trigger: "Left Click", action: .tap, tapPoint: NormalizedPoint(x: 0.90, y: 0.82), note: "Basic attack")
+        ]
+        keyProfiles[profileIndex].inputBridgeMode = .liveOverlay
+        keyProfiles[profileIndex].updatedAt = .now
+        saveKeyProfiles()
+    }
+
+    func exportKeyProfiles() {
+        _ = keyMappingService.exportProfiles(keyProfiles)
     }
 
     func activateKeyMapping(for app: AndroidApp) {

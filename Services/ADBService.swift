@@ -514,6 +514,58 @@ final class ADBService {
         return targetSerial ?? "active ADB device"
     }
 
+    func resetRotation(adbURL: URL, serial: String?) async throws -> String {
+        let targetSerial = await preferredEmulatorSerial(adbURL: adbURL, preferredSerial: serial)
+        let commands: [(message: String, arguments: [String])] = [
+            (
+                "Returning Android rotation to normal automatic behavior.",
+                ["shell", "wm", "user-rotation", "free"]
+            ),
+            (
+                "Letting apps request their own orientation again.",
+                ["shell", "wm", "set-ignore-orientation-request", "false"]
+            ),
+            (
+                "Disabling fixed-to-user rotation.",
+                ["shell", "wm", "fixed-to-user-rotation", "disabled"]
+            ),
+            (
+                "Turning Android automatic rotation back on.",
+                ["shell", "settings", "put", "system", "accelerometer_rotation", "1"]
+            )
+        ]
+        var didReset = false
+        var lastOutput = ""
+
+        for command in commands {
+            logService.log(
+                command.message,
+                level: .command,
+                command: readableCommand(command.arguments, serial: targetSerial)
+            )
+
+            let result = try await ShellCommandRunner.run(
+                executableURL: adbURL,
+                arguments: targetedArguments(command.arguments, serial: targetSerial)
+            )
+
+            lastOutput = result.combinedOutput
+
+            if result.succeeded {
+                didReset = true
+            } else {
+                logService.log(result.combinedOutput, level: .warning)
+            }
+        }
+
+        guard didReset else {
+            throw ShellCommandError.failedToLaunch(lastOutput.isEmpty ? "Rotation reset failed." : lastOutput)
+        }
+
+        logService.log("Rotation settings were reset on \(targetSerial ?? "the active ADB device").", level: .success)
+        return targetSerial ?? "active ADB device"
+    }
+
     @discardableResult
     private func applyRotationCompatibility(adbURL: URL, serial: String?) async -> Bool {
         let commands: [(message: String, arguments: [String])] = [
