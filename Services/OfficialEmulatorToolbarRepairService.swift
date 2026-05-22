@@ -9,7 +9,7 @@
 import AppKit
 
 @MainActor
-final class OfficialEmulatorToolbarRepairService {
+final class OfficialEmulatorToolbarRepairService: NSObject {
     private struct ToolbarButtonTarget: Identifiable {
         let action: EmulatorControlAction
         let centerYFromTop: CGFloat
@@ -37,6 +37,7 @@ final class OfficialEmulatorToolbarRepairService {
 
     init(logService: LogService) {
         self.logService = logService
+        super.init()
     }
 
     func start(clickHandler: @escaping (EmulatorControlAction) -> Void) {
@@ -48,11 +49,13 @@ final class OfficialEmulatorToolbarRepairService {
         }
 
         refreshOverlays()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.refreshOverlays()
-            }
-        }
+        timer = Timer.scheduledTimer(
+            timeInterval: 0.5,
+            target: self,
+            selector: #selector(timerDidFire(_:)),
+            userInfo: nil,
+            repeats: true
+        )
     }
 
     func stop() {
@@ -80,6 +83,10 @@ final class OfficialEmulatorToolbarRepairService {
             hasLoggedReady = true
             logService.log("Official Google Emulator toolbar repair is active. Toolbar clicks will be routed through ADB.", level: .success)
         }
+    }
+
+    @objc private func timerDidFire(_ timer: Timer) {
+        refreshOverlays()
     }
 
     private func makePanel(for action: EmulatorControlAction) -> ToolbarClickPanel {

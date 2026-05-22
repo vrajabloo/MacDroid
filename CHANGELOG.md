@@ -2,6 +2,13 @@
 
 This file lists important MacDroid updates so users and developers can quickly understand what changed.
 
+## 2026-05-22 - 0.3.1
+
+### Fixed
+
+- Fixed the GitHub Actions release build by removing an unsafe Swift concurrency capture in the official emulator toolbar repair timer.
+- Added release workflow write permissions so tag builds can publish release assets.
+
 ## 2026-05-22 - 0.3.0
 
 ### Added
