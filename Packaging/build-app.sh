@@ -15,6 +15,8 @@ CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 ICON_PATH="$SCRIPT_DIR/AppIcon.icns"
+ENTITLEMENTS_PATH="$SCRIPT_DIR/MacDroid.entitlements"
+SIGNING_IDENTITY="${MACDROID_SIGNING_IDENTITY:-}"
 
 echo "Building MacDroid in release mode..."
 swift build -c release --package-path "$PROJECT_DIR"
@@ -33,8 +35,20 @@ cp "$ICON_PATH" "$RESOURCES_DIR/AppIcon.icns"
 chmod +x "$MACOS_DIR/MacDroid"
 
 if command -v codesign >/dev/null 2>&1; then
-    echo "Applying local ad-hoc code signature..."
-    codesign --force --deep --sign - "$APP_DIR" >/dev/null
+    if [[ -n "$SIGNING_IDENTITY" ]]; then
+        echo "Applying Developer ID signature with hardened runtime..."
+        codesign \
+            --force \
+            --deep \
+            --options runtime \
+            --timestamp \
+            --entitlements "$ENTITLEMENTS_PATH" \
+            --sign "$SIGNING_IDENTITY" \
+            "$APP_DIR" >/dev/null
+    else
+        echo "Applying local ad-hoc code signature..."
+        codesign --force --deep --sign - "$APP_DIR" >/dev/null
+    fi
 fi
 
 echo "Done: $APP_DIR"

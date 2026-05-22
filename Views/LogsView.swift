@@ -55,6 +55,21 @@ struct LogsView: View {
 
             Spacer()
 
+            Button {
+                Task { await app.exportDiagnostics() }
+            } label: {
+                Label("Export Diagnostics", systemImage: "square.and.arrow.up")
+            }
+            .disabled(app.isBusy)
+
+            if app.latestDiagnosticURL != nil {
+                Button {
+                    app.revealLatestDiagnostics()
+                } label: {
+                    Label("Reveal", systemImage: "folder.fill")
+                }
+            }
+
             Button(role: .destructive) {
                 app.logService.clear()
             } label: {

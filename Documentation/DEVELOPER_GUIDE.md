@@ -96,6 +96,12 @@ Services/UpdateCheckerService.swift
 Checks GitHub Releases and reports whether a newer MacDroid build is available.
 
 ```text
+Services/DiagnosticExportService.swift
+```
+
+Creates a support report that includes SDK paths, ADB devices, AVD output, library state, settings, update status, and recent logs.
+
+```text
 Utilities/ShellCommandRunner.swift
 ```
 
@@ -234,8 +240,17 @@ Before pushing a change:
 ```bash
 swift build
 ./Packaging/build-app.sh
+./Packaging/package-release.sh
 codesign --verify --deep --strict "Build/MacDroid.app"
 plutil -lint "Build/MacDroid.app/Contents/Info.plist"
 ```
 
 Then open the app and test the changed screen manually.
+
+For public distribution, use Developer ID signing and notarize the DMG:
+
+```bash
+export MACDROID_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+./Packaging/package-release.sh
+./Packaging/notarize-dmg.sh Build/MacDroid-<version>-macOS-arm64.dmg
+```

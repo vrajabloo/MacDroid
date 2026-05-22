@@ -2,6 +2,16 @@
 
 This file lists important MacDroid updates so users and developers can quickly understand what changed.
 
+## 2026-05-22 - 0.3.0
+
+### Added
+
+- Added macOS DMG packaging with drag-to-Applications layout.
+- Added Developer ID signing path with hardened runtime support.
+- Added notarization helper script for signed DMG releases.
+- Added Export Diagnostics from Health and Logs.
+- Added DMG assets to the GitHub release workflow.
+
 ## 2026-05-21 - 0.2.2
 
 ### Fixed

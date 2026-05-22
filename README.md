@@ -24,12 +24,16 @@ MacDroid is **not** a custom emulator engine. It is a polished gaming wrapper ar
 - Official Google Emulator toolbar repair
 - Live key mapping overlay through ADB input
 - GitHub Release update checker
+- Export Diagnostics support report
+- DMG release packaging
 - Beginner-friendly logs
 
 ## Latest Updates
 
 Users can check this section before building or downloading the app.
 
+- macOS `.dmg` packaging was added for a normal drag-to-Applications install.
+- Export Diagnostics was added for easier user support and bug reports.
 - The app icon was enlarged by cropping the empty transparent border around the neon `M` artwork.
 - Setup Wizard, Health Check, per-game Profiles, and GitHub update checking were added.
 - Release packaging now creates a zip file for GitHub Releases.
@@ -44,13 +48,19 @@ Full update history:
 
 ## Download
 
-GitHub Releases can contain a ready-to-open zip:
+GitHub Releases can contain a ready-to-install DMG:
+
+```text
+MacDroid-<version>-macOS-arm64.dmg
+```
+
+Open the DMG, drag `MacDroid.app` into Applications, then open it from Applications.
+
+The zip is still available for developers:
 
 ```text
 MacDroid-<version>-macOS-arm64.zip
 ```
-
-Unzip it, then open `MacDroid.app`.
 
 MacDroid still requires Android Studio or Android SDK tools on the user's Mac.
 
@@ -66,6 +76,8 @@ To create a release zip locally:
 ```bash
 ./Packaging/package-release.sh
 ```
+
+That command creates both `.zip` and `.dmg` release assets.
 
 Then open:
 

@@ -17,6 +17,8 @@ The goal is to make the official Android Emulator feel like a beginner-friendly 
 - health check report
 - per-game launch profiles
 - update checker
+- export diagnostics
+- DMG installer packaging
 - simple settings
 - readable logs
 
@@ -122,9 +124,23 @@ The Health screen checks the common failure points:
 - game profiles
 - update status
 
+It also has `Export Diagnostics`, which writes a support report with SDK paths, ADB device output, AVD output, library state, settings, update status, and recent MacDroid logs.
+
 ### Updates
 
 MacDroid can check the public GitHub Releases API and show whether a newer release is available. It does not install updates automatically.
+
+## Install For Users
+
+The recommended public download is:
+
+```text
+MacDroid-<version>-macOS-arm64.dmg
+```
+
+Users should open the DMG, drag `MacDroid.app` into Applications, then open MacDroid from Applications.
+
+If macOS blocks an unsigned local build, right-click the app and choose Open. Public builds should be Developer ID signed and notarized before broad distribution.
 
 ### Settings
 

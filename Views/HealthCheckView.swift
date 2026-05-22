@@ -40,12 +40,16 @@ struct HealthCheckView: View {
             HStack(alignment: .center, spacing: 18) {
                 titleBlock
                 Spacer()
+                diagnosticButtons
                 healthScore
             }
 
             VStack(alignment: .leading, spacing: 12) {
                 titleBlock
-                healthScore
+                HStack {
+                    healthScore
+                    diagnosticButtons
+                }
             }
         }
     }
@@ -64,6 +68,26 @@ struct HealthCheckView: View {
             title: "\(goodCount)/\(max(app.healthCheckItems.count, 1)) Ready",
             color: goodCount == app.healthCheckItems.count ? Color(hex: 0x1EEA8A) : Color(hex: 0xFFD166)
         )
+    }
+
+    private var diagnosticButtons: some View {
+        HStack(spacing: 10) {
+            Button {
+                Task { await app.exportDiagnostics() }
+            } label: {
+                Label("Export Diagnostics", systemImage: "square.and.arrow.up")
+            }
+            .disabled(app.isBusy)
+
+            if app.latestDiagnosticURL != nil {
+                Button {
+                    app.revealLatestDiagnostics()
+                } label: {
+                    Image(systemName: "folder.fill")
+                }
+                .help("Show the latest diagnostics file in Finder")
+            }
+        }
     }
 
     private func healthCard(_ item: HealthCheckItem) -> some View {

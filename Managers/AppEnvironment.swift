@@ -26,6 +26,7 @@ final class AppEnvironment: ObservableObject {
     @Published var latestScreenshotURL: URL?
     @Published var recentLogcatText = ""
     @Published var networkDiagnosticText = ""
+    @Published var latestDiagnosticURL: URL?
     @Published var lastNavigationMessage = ""
     @Published var lastEmulatorControlMessage = ""
     @Published var activeKeyMappingPackageName: String?
@@ -44,6 +45,7 @@ final class AppEnvironment: ObservableObject {
     let gameProfileService: GameProfileService
     let healthCheckService: HealthCheckService
     let updateCheckerService: UpdateCheckerService
+    let diagnosticExportService: DiagnosticExportService
     let inputMappingExecutionService: InputMappingExecutionService
     let settingsService: SettingsService
     let officialToolbarRepairService: OfficialEmulatorToolbarRepairService
@@ -67,6 +69,7 @@ final class AppEnvironment: ObservableObject {
         self.gameProfileService = gameProfileService
         self.healthCheckService = HealthCheckService()
         self.updateCheckerService = UpdateCheckerService(logService: logService)
+        self.diagnosticExportService = DiagnosticExportService(logService: logService)
         self.avdManagerService = avdManagerService
         self.sdkDetector = AndroidSDKDetector(logService: logService)
         self.adbService = ADBService(logService: logService)
@@ -323,6 +326,32 @@ final class AppEnvironment: ObservableObject {
         }
 
         NSWorkspace.shared.open(url)
+    }
+
+    func exportDiagnostics() async {
+        await runBusyTask("Exporting diagnostics...") {
+            latestDiagnosticURL = await diagnosticExportService.exportReport(
+                sdkInfo: sdkInfo,
+                avds: avds,
+                emulatorState: emulatorState,
+                deviceInfo: deviceInfo,
+                games: games,
+                settings: settings,
+                gameProfiles: gameProfiles,
+                keyProfiles: keyProfiles,
+                updateInfo: updateInfo,
+                logEntries: logService.entries
+            )
+        }
+    }
+
+    func revealLatestDiagnostics() {
+        guard let latestDiagnosticURL else {
+            logService.log("No diagnostics file has been exported yet.", level: .warning)
+            return
+        }
+
+        NSWorkspace.shared.activateFileViewerSelecting([latestDiagnosticURL])
     }
 
     func installAPK(from apkURL: URL) async {

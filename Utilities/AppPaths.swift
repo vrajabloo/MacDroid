@@ -44,6 +44,10 @@ enum AppPaths {
         applicationSupportDirectory.appendingPathComponent("Exports", isDirectory: true)
     }
 
+    static var diagnosticsDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("Diagnostics", isDirectory: true)
+    }
+
     static func ensureApplicationSupportDirectory() throws {
         try FileManager.default.createDirectory(
             at: applicationSupportDirectory,
@@ -61,6 +65,13 @@ enum AppPaths {
     static func ensureExportsDirectory() throws {
         try FileManager.default.createDirectory(
             at: exportsDirectory,
+            withIntermediateDirectories: true
+        )
+    }
+
+    static func ensureDiagnosticsDirectory() throws {
+        try FileManager.default.createDirectory(
+            at: diagnosticsDirectory,
             withIntermediateDirectories: true
         )
     }
