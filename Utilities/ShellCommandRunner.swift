@@ -64,20 +64,26 @@ enum ShellCommandRunner {
                 process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
             }
 
-            process.terminationHandler = { finishedProcess in
-                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            // Drain stdout and stderr on background queues while the child runs.
+            // Reading only after termination (in a terminationHandler) can deadlock:
+            // once the child fills the ~64KB pipe buffer it blocks on write and never
+            // exits, so the handler that would drain the pipe is never called.
+            let outputQueue = DispatchQueue(label: "com.macdroid.shell-output", attributes: .concurrent)
+            let readGroup = DispatchGroup()
 
-                let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
-                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+            var stdoutData = Data()
+            var stderrData = Data()
 
-                continuation.resume(
-                    returning: ShellCommandResult(
-                        standardOutput: stdout,
-                        standardError: stderr,
-                        exitCode: finishedProcess.terminationStatus
-                    )
-                )
+            readGroup.enter()
+            outputQueue.async {
+                stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                readGroup.leave()
+            }
+
+            readGroup.enter()
+            outputQueue.async {
+                stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                readGroup.leave()
             }
 
             do {
@@ -89,8 +95,31 @@ enum ShellCommandRunner {
 
                 try? stdinPipe.fileHandleForWriting.close()
             } catch {
+                // The child never launched, so close the write ends to release the
+                // pending reads before reporting the failure.
+                try? stdoutPipe.fileHandleForWriting.close()
+                try? stderrPipe.fileHandleForWriting.close()
                 continuation.resume(
                     throwing: ShellCommandError.failedToLaunch(error.localizedDescription)
+                )
+                return
+            }
+
+            // Wait for exit and full drain off the calling thread so the caller's
+            // async context is never blocked.
+            outputQueue.async {
+                process.waitUntilExit()
+                readGroup.wait()
+
+                let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
+                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+
+                continuation.resume(
+                    returning: ShellCommandResult(
+                        standardOutput: stdout,
+                        standardError: stderr,
+                        exitCode: process.terminationStatus
+                    )
                 )
             }
         }

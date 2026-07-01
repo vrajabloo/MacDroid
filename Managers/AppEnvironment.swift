@@ -783,7 +783,13 @@ final class AppEnvironment: ObservableObject {
 
     func saveSettings() {
         settingsService.saveSettings(settings)
-        avdManagerService.apply(settings: settings, toAVDNamed: selectedAVDName)
+
+        // Only push settings into an AVD config when we actually have one selected;
+        // an empty name would target a nonexistent ".avd/config.ini" and log noise.
+        if !selectedAVDName.isEmpty {
+            avdManagerService.apply(settings: settings, toAVDNamed: selectedAVDName)
+        }
+
         updateOfficialToolbarRepair()
         refreshHealthChecks()
     }

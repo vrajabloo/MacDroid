@@ -47,18 +47,32 @@ final class UpdateCheckerService {
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            if let httpResponse = response as? HTTPURLResponse,
-               httpResponse.statusCode == 404 {
-                return AppUpdateInfo(
-                    currentVersion: currentVersion,
-                    latestVersion: nil,
-                    releaseName: nil,
-                    releaseURL: URL(string: "https://github.com/\(owner)/\(repository)/releases"),
-                    releaseNotes: nil,
-                    checkedAt: .now,
-                    isUpdateAvailable: false,
-                    message: "No GitHub Release has been published yet."
-                )
+            if let httpResponse = response as? HTTPURLResponse {
+                switch httpResponse.statusCode {
+                case 200:
+                    break
+                case 404:
+                    return AppUpdateInfo(
+                        currentVersion: currentVersion,
+                        latestVersion: nil,
+                        releaseName: nil,
+                        releaseURL: URL(string: "https://github.com/\(owner)/\(repository)/releases"),
+                        releaseNotes: nil,
+                        checkedAt: .now,
+                        isUpdateAvailable: false,
+                        message: "No GitHub Release has been published yet."
+                    )
+                case 403, 429:
+                    return failure(
+                        "GitHub rate limit reached. Try checking for updates again in a little while.",
+                        currentVersion: currentVersion
+                    )
+                default:
+                    return failure(
+                        "GitHub returned status \(httpResponse.statusCode) while checking for updates.",
+                        currentVersion: currentVersion
+                    )
+                }
             }
 
             let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
